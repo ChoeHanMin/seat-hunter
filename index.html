@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>자리 사냥 — Seat Hunter</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=DotGothic16&family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy-950:#0c1017;
+    --car-800:#232b39;
+    --car-750:#293244;
+    --car-700:#313c50;
+    --seat-amber:#d98a3d;
+    --seat-amber-dark:#a96826;
+    --seat-amber-light:#f0b06a;
+    --line-green:#12b45c;
+    --signage-amber:#ffb703;
+    --alert-red:#ef4544;
+    --paper:#f3ecdd;
+    --steel-400:#8a93a6;
+    --steel-300:#aab2c2;
+    display: block;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;height:100%;background:var(--navy-950);overflow:hidden;}
+  body{
+    font-family:'Noto Sans KR', sans-serif;
+    color:var(--paper);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    min-height:100vh;
+    background:
+      radial-gradient(ellipse at 50% -10%, #1b2334 0%, var(--navy-950) 60%);
+  }
+
+  #stage{
+    position:relative;
+    width:100%;
+    max-width:420px;
+    height:100vh;
+    max-height:900px;
+    background:var(--car-800);
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
+    box-shadow:0 0 0 1px #000, 0 30px 80px rgba(0,0,0,.6);
+  }
+  @media (min-width:460px){
+    #stage{ height:840px; border-radius:34px; }
+  }
+
+  /* ---------- textures ---------- */
+  .tunnel-window{
+    position:absolute; inset:0; pointer-events:none; opacity:.5; z-index:0;
+    background:
+      repeating-linear-gradient(180deg, rgba(255,255,255,.02) 0 2px, transparent 2px 4px),
+      radial-gradient(circle at 15% 8%, rgba(255,183,3,.05), transparent 40%);
+  }
+
+  /* ============ LED DEPARTURE SIGN ============ */
+  .led-sign{
+    position:relative; z-index:2;
+    background:#05070b;
+    padding:10px 14px 8px;
+    border-bottom:3px solid #000;
+    font-family:'DotGothic16', monospace;
+    flex-shrink:0;
+  }
+  .led-top-row{
+    display:flex; align-items:baseline; justify-content:space-between;
+    gap:8px;
+  }
+  .led-line-badge{
+    font-size:12px; padding:2px 8px; border-radius:3px;
+    background:var(--line-color, var(--line-green)); color:#05070b; font-weight:700;
+    letter-spacing:.5px;
+  }
+  .led-station{
+    color:var(--signage-amber);
+    font-size:19px;
+    letter-spacing:2px;
+    text-shadow:0 0 6px rgba(255,183,3,.55);
+    flex:1;
+    text-align:center;
+    animation:ledFlicker 2.6s infinite;
+  }
+  @keyframes ledFlicker{ 0%,92%,100%{opacity:1;} 94%{opacity:.72;} 96%{opacity:1;} }
+  .led-dots{ font-size:11px; color:#3a4356; letter-spacing:3px; }
+  .led-sub{
+    margin-top:4px; font-size:11px; color:#6d7893; letter-spacing:1px; text-align:center;
+    min-height:14px;
+  }
+  .station-progress{
+    display:flex; gap:6px; justify-content:center; margin-top:7px;
+  }
+  .station-progress span{
+    width:7px; height:7px; border-radius:50%; background:#2b3446; transition:background .3s, transform .3s;
+  }
+  .station-progress span.done{ background:var(--line-color, var(--line-green)); }
+  .station-progress span.now{ background:var(--signage-amber); transform:scale(1.3); box-shadow:0 0 6px var(--signage-amber); }
+
+  /* ============ HUD ============ */
+  .hud{
+    position:relative; z-index:2;
+    display:flex; justify-content:space-between; align-items:center;
+    padding:10px 16px;
+    flex-shrink:0;
+  }
+  .hud-block{ text-align:left; }
+  .hud-label{ font-size:10px; color:var(--steel-400); letter-spacing:2px; }
+  .hud-value{
+    font-family:'DotGothic16', monospace;
+    font-size:24px; color:var(--signage-amber);
+    text-shadow:0 0 8px rgba(255,183,3,.4);
+  }
+  .hud-combo{ text-align:right; }
+  .hud-combo .hud-value{ color:#ff8a3d; transition:font-size .15s, color .15s; }
+  .hud-combo.hot .hud-value{ color:#ff5252; }
+
+  /* ============ SCENE ============ */
+  .scene{
+    position:relative; z-index:2;
+    flex:1;
+    display:flex; flex-direction:column; justify-content:flex-end;
+    padding:0 14px 14px;
+    min-height:0;
+  }
+
+  .caption-toast{
+    position:absolute; left:0; right:0; top:34%;
+    text-align:center; z-index:5; pointer-events:none;
+  }
+  .caption-toast span{
+    display:inline-block;
+    font-family:'Black Han Sans', sans-serif;
+    font-size:30px;
+    color:var(--signage-amber);
+    text-shadow:0 3px 0 #000, 0 0 20px rgba(255,183,3,.5);
+    opacity:0; transform:scale(.6);
+  }
+  .caption-toast span.show{
+    animation:captionPop .95s cubic-bezier(.2,1.4,.4,1) forwards;
+  }
+  @keyframes captionPop{
+    0%{opacity:0; transform:scale(.5) rotate(-3deg);}
+    18%{opacity:1; transform:scale(1.12) rotate(1deg);}
+    30%{transform:scale(1) rotate(0);}
+    78%{opacity:1;}
+    100%{opacity:0; transform:scale(1.05) translateY(-10px);}
+  }
+
+  .result-banner{
+    position:absolute; left:14px; right:14px; top:14px; z-index:6;
+    text-align:center; padding:10px 12px; border-radius:10px;
+    font-weight:900; font-size:15px;
+    transform:translateY(-140%); transition:transform .35s cubic-bezier(.2,1,.3,1);
+    box-shadow:0 6px 18px rgba(0,0,0,.4);
+  }
+  .result-banner.show{ transform:translateY(0); }
+  .result-banner.success{ background:var(--line-green); color:#04150a; }
+  .result-banner.fail{ background:var(--alert-red); color:#2a0505; }
+  .result-banner.miss{ background:#5a6377; color:#0c1017; }
+  .result-banner small{ display:block; font-weight:500; font-size:11.5px; margin-top:2px; opacity:.85;}
+
+  /* ============ TIMER BAR ============ */
+  .timer-track{
+    height:6px; border-radius:4px; background:#151b26; overflow:hidden; margin-bottom:12px; flex-shrink:0;
+  }
+  .timer-fill{
+    height:100%; width:100%; background:linear-gradient(90deg, var(--line-green), var(--signage-amber));
+    transform-origin:left; border-radius:4px;
+  }
+  .timer-fill.running{ animation-name:timerRun; animation-timing-function:linear; animation-fill-mode:forwards; }
+  @keyframes timerRun{ from{transform:scaleX(1);} to{transform:scaleX(0);} }
+
+  /* ============ CAR / BENCH ============ */
+  .car-body{
+    background:linear-gradient(180deg, var(--car-750), var(--car-700) 70%, #1a212e);
+    border-radius:14px 14px 6px 6px;
+    padding:16px 10px 10px;
+    border:1px solid #3a4459;
+    position:relative;
+  }
+  .car-body::before{
+    content:"";
+    position:absolute; top:6px; left:10px; right:10px; height:6px;
+    background:repeating-linear-gradient(90deg,#4a5573 0 10px, transparent 10px 16px);
+    opacity:.35; border-radius:3px;
+  }
+  .bench{
+    display:flex; gap:5px; align-items:flex-end; padding-top:6px;
+  }
+  .seat{
+    flex:1; min-width:0;
+    display:flex; flex-direction:column; align-items:center;
+    position:relative;
+  }
+  .tell-bubble{
+    height:20px; margin-bottom:2px; font-size:15px; opacity:0; transform:translateY(4px) scale(.7);
+    transition:opacity .18s, transform .18s;
+    filter:drop-shadow(0 2px 3px rgba(0,0,0,.5));
+  }
+  .tell-bubble.show{ opacity:1; transform:translateY(0) scale(1); }
+
+  .passenger-btn{
+    width:100%;
+    background:none; border:none; padding:0; margin:0; cursor:pointer;
+    touch-action:manipulation; user-select:none; -webkit-user-select:none;
+    display:flex; flex-direction:column; align-items:center;
+  }
+  .avatar{
+    font-size:clamp(20px,6.4vw,28px);
+    line-height:1;
+    padding:6px 2px;
+    border-radius:10px 10px 0 0;
+    background:var(--car-800);
+    border:2px solid transparent;
+    transition:border-color .12s, background .12s, transform .1s;
+    position:relative;
+    width:100%;
+    text-align:center;
+  }
+  .seat-cushion{
+    width:88%;
+    height:12px;
+    background:linear-gradient(180deg, var(--seat-amber), var(--seat-amber-dark));
+    border-radius:0 0 6px 6px;
+    box-shadow:inset 0 -3px 0 rgba(0,0,0,.25);
+    transition:opacity .3s;
+  }
+
+  .passenger-btn.selected .avatar{ border-color:var(--steel-300); background:#33405a; transform:translateY(-2px); }
+  .passenger-btn.confident .avatar{
+    border-color:var(--signage-amber); background:#4a3a17;
+    box-shadow:0 0 14px rgba(255,183,3,.55);
+  }
+  .passenger-btn.confident .avatar::after{
+    content:"⭐×2"; position:absolute; top:-11px; right:-4px; font-size:9px;
+    background:var(--signage-amber); color:#241800; padding:1px 4px; border-radius:6px; font-weight:700;
+  }
+  .passenger-btn.charging .avatar{ animation:chargePulse .42s ease-out; }
+  @keyframes chargePulse{ 0%{box-shadow:0 0 0 rgba(255,183,3,0);} 100%{box-shadow:0 0 16px rgba(255,183,3,.6);} }
+
+  .passenger-btn.leaving .avatar{ animation:walkOff .7s ease-in forwards; }
+  @keyframes walkOff{
+    0%{ transform:translateY(0) scale(1); opacity:1; }
+    100%{ transform:translateY(-14px) translateX(28px) scale(.6); opacity:0; }
+  }
+  .passenger-btn.leaving .seat-cushion{ opacity:0; }
+
+  .seat.empty .seat-cushion{ box-shadow:0 0 0 2px var(--line-green) inset, inset 0 -3px 0 rgba(0,0,0,.25); }
+  .seat.rush-in .avatar{ animation:rushIn .38s cubic-bezier(.3,1.6,.4,1); }
+  @keyframes rushIn{
+    0%{ transform:translateX(-40px) scale(.5); opacity:0; }
+    70%{ transform:translateX(4px) scale(1.08); opacity:1; }
+    100%{ transform:translateX(0) scale(1); }
+  }
+
+  .seat.correct .avatar{ box-shadow:0 0 0 3px var(--line-green), 0 0 16px rgba(18,180,92,.6); }
+  .seat.wrong-pick .avatar{ animation:shakeNo .4s; box-shadow:0 0 0 3px var(--alert-red); }
+  @keyframes shakeNo{ 0%,100%{transform:translateX(0);} 25%{transform:translateX(-5px);} 75%{transform:translateX(5px);} }
+
+  .door-flash{
+    position:absolute; inset:0; background:#fff; opacity:0; pointer-events:none; z-index:8; border-radius:inherit;
+  }
+  .door-flash.flash{ animation:doorFlash .5s ease-out; }
+  @keyframes doorFlash{ 0%{opacity:.55;} 100%{opacity:0;} }
+
+  /* ============ BOTTOM BAR ============ */
+  .bottom-bar{
+    flex-shrink:0; padding:10px 16px 16px; text-align:center;
+    position:relative; z-index:2;
+  }
+  .bottom-hint{ font-size:12px; color:var(--steel-400); }
+  .bottom-hint b{ color:var(--steel-300); }
+
+  /* ============ OVERLAYS (start / summary) ============ */
+  .overlay{
+    position:absolute; inset:0; z-index:20;
+    background:linear-gradient(180deg, #0c1017 0%, #131a26 100%);
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    padding:32px 26px; text-align:center;
+  }
+  .overlay.hidden{ display:none; }
+  .game-title{
+    font-family:'Black Han Sans', sans-serif;
+    font-size:44px; color:var(--signage-amber);
+    text-shadow:0 4px 0 #000;
+    margin:0;
+    letter-spacing:1px;
+  }
+  .game-subtitle{
+    font-family:'DotGothic16', monospace;
+    color:var(--steel-300); font-size:13px; letter-spacing:3px; margin-top:6px;
+  }
+  .tagline{ margin:18px 0 22px; color:var(--steel-300); font-size:14px; line-height:1.6; }
+  .rule-list{
+    list-style:none; padding:0; margin:0 0 26px; width:100%; max-width:300px;
+  }
+  .rule-list li{
+    display:flex; gap:10px; align-items:flex-start; text-align:left;
+    font-size:13px; color:var(--paper); background:var(--car-750);
+    border:1px solid #3a4459; border-radius:10px; padding:10px 12px; margin-bottom:8px;
+  }
+  .rule-list li span.emoji{ font-size:18px; }
+  .btn-primary{
+    font-family:'Noto Sans KR', sans-serif; font-weight:900; font-size:17px;
+    background:var(--line-green); color:#04150a; border:none; border-radius:12px;
+    padding:14px 36px; cursor:pointer; box-shadow:0 6px 0 #0a7238; letter-spacing:1px;
+    transition:transform .08s;
+  }
+  .btn-primary:active{ transform:translateY(4px); box-shadow:0 2px 0 #0a7238; }
+  .btn-secondary{
+    margin-top:12px; background:none; border:1px solid var(--steel-400); color:var(--steel-300);
+    padding:9px 22px; border-radius:10px; font-size:13px; cursor:pointer;
+  }
+
+  .summary-title{ font-family:'Black Han Sans', sans-serif; font-size:26px; color:var(--paper); margin-bottom:2px; }
+  .summary-line{ font-size:12px; color:var(--steel-400); margin-bottom:20px; letter-spacing:1px; }
+  .summary-score{
+    font-family:'DotGothic16', monospace; font-size:46px; color:var(--signage-amber);
+    text-shadow:0 0 14px rgba(255,183,3,.5); margin-bottom:4px;
+  }
+  .summary-rank{
+    font-size:13px; color:var(--steel-300); margin-bottom:6px;
+  }
+  .summary-title-badge{
+    display:inline-block; margin:8px 0 20px; padding:8px 18px; border-radius:20px;
+    background:var(--car-750); border:1px solid var(--signage-amber); color:var(--signage-amber);
+    font-weight:700; font-size:14px;
+  }
+  .summary-combo{ font-size:12.5px; color:var(--steel-400); margin-bottom:22px; }
+</style>
+</head>
+<body>
+
+<div id="stage">
+  <div class="tunnel-window"></div>
+
+  <div class="led-sign">
+    <div class="led-top-row">
+      <span class="led-line-badge" id="lineBadge">2호선</span>
+      <span class="led-station" id="ledStation">이번 역은 강남</span>
+      <span class="led-dots">•••</span>
+    </div>
+    <div class="led-sub" id="ledSub">문이 열립니다</div>
+    <div class="station-progress" id="stationProgress"></div>
+  </div>
+
+  <div class="hud">
+    <div class="hud-block">
+      <div class="hud-label">SCORE</div>
+      <div class="hud-value" id="scoreVal">0000</div>
+    </div>
+    <div class="hud-block hud-combo" id="comboBlock">
+      <div class="hud-label">COMBO</div>
+      <div class="hud-value" id="comboVal">🔥0</div>
+    </div>
+  </div>
+
+  <div class="scene">
+    <div class="caption-toast"><span id="captionText"></span></div>
+
+    <div class="timer-track"><div class="timer-fill" id="timerFill"></div></div>
+
+    <div class="car-body">
+      <div class="result-banner" id="resultBanner"><span id="resultText"></span><small id="resultSub"></small></div>
+      <div class="door-flash" id="doorFlash"></div>
+      <div class="bench" id="bench"></div>
+    </div>
+  </div>
+
+  <div class="bottom-bar">
+    <div class="bottom-hint" id="bottomHint"><b>탭</b> = 예측 선택 · <b>꾹 누르기</b> = 확신 베팅 (×2)</div>
+  </div>
+
+  <!-- START SCREEN -->
+  <div class="overlay" id="startScreen">
+    <h1 class="game-title">자리 사냥</h1>
+    <div class="game-subtitle">SEAT HUNTER</div>
+    <p class="tagline">지하철 문이 열리기 전, 누가 내릴지<br>먼저 알아채는 사람이 자리를 가진다.</p>
+    <ul class="rule-list">
+      <li><span class="emoji">👀</span> 승객들의 행동을 관찰하고, 곧 내릴 것 같은 사람을 탭하세요.</li>
+      <li><span class="emoji">🎒</span> 가짜 행동(페이크)에 속지 마세요 — 진짜는 신호가 딱 1번뿐입니다.</li>
+      <li><span class="emoji">🚪</span> 문이 열리면 결과가 공개! 맞히면 콤보 획득, 틀리면 자리 뺏김.</li>
+    </ul>
+    <button class="btn-primary" id="startBtn">승차하기</button>
+  </div>
+
+  <!-- SUMMARY SCREEN -->
+  <div class="overlay hidden" id="summaryScreen">
+    <div class="summary-title" id="summaryTitle">2호선 완주!</div>
+    <div class="summary-line" id="summarySubLine">SEOUL METRO</div>
+    <div class="summary-score" id="summaryScore">0000</div>
+    <div class="summary-rank" id="summaryRank">눈치력 상위 --%</div>
+    <div class="summary-title-badge" id="summaryBadge">지하철 초보</div>
+    <div class="summary-combo" id="summaryCombo">최고 콤보 0연속</div>
+    <button class="btn-primary" id="nextBtn">다음 노선 타기</button>
+    <button class="btn-secondary" id="restartBtn">처음부터 다시</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var LINES = [
+    { name:"2호선", color:"#12b45c", stations:["강남","홍대입구","신촌","잠실","시청"],
+      count:5, observeMs:6200, fakeLevel:0 },
+    { name:"9호선 급행", color:"#d9a227", stations:["여의도","노량진","고속터미널","신논현","언주"],
+      count:6, observeMs:5200, fakeLevel:1 },
+    { name:"막차", color:"#8b5cf6", stations:["서울역","을지로입구","종각","동대문","왕십리"],
+      count:7, observeMs:4500, fakeLevel:2 }
+  ];
+
+  var IDLE_ICONS = ["😴","📱","👀","🧍","💺","🙆","😌"];
+  var TELL_ICONS = ["🎧","🎒","📍","🙋"];
+  var DRUNK_ICON = "🍺";
+
+  var TITLE_BRACKETS = [
+    { min:0,    name:"지하철 초보" },
+    { min:600,  name:"눈치 9단" },
+    { min:1200, name:"자리 헌터" },
+    { min:2000, name:"착석 마스터" },
+    { min:3000, name:"좌석의 지배자" }
+  ];
+
+  var els = {};
+  ["lineBadge","ledStation","ledSub","stationProgress","scoreVal","comboVal","comboBlock",
+   "captionText","timerFill","resultBanner","resultText","resultSub","doorFlash","bench",
+   "bottomHint","startScreen","summaryScreen","startBtn","nextBtn","restartBtn",
+   "summaryTitle","summarySubLine","summaryScore","summaryRank","summaryBadge","summaryCombo"
+  ].forEach(function(id){ els[id] = document.getElementById(id); });
+
+  var state = {
+    lineIndex:0, stationIndex:0, score:0, combo:0, bestCombo:0,
+    passengers:[], leaverIdx:-1, selectedIdx:-1, confident:false,
+    roundActive:false, timers:[]
+  };
+
+  function clamp(n,a,b){ return Math.max(a,Math.min(b,n)); }
+  function rand(a,b){ return a + Math.random()*(b-a); }
+  function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+  function shuffle(arr){
+    var a = arr.slice();
+    for(var i=a.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)); var t=a[i]; a[i]=a[j]; a[j]=t; }
+    return a;
+  }
+  function clearTimers(){ state.timers.forEach(clearTimeout); state.timers = []; }
+  function after(ms, fn){ var t = setTimeout(fn, ms); state.timers.push(t); return t; }
+
+  function currentLine(){ return LINES[state.lineIndex]; }
+
+  /* ---------------- HUD ---------------- */
+  function renderHUD(){
+    els.scoreVal.textContent = String(state.score).padStart(4,"0");
+    els.comboVal.textContent = "🔥" + state.combo;
+    els.comboBlock.classList.toggle("hot", state.combo >= 5);
+    var size = clamp(24 + state.combo*1.4, 24, 42);
+    els.comboVal.style.fontSize = size + "px";
+  }
+
+  function renderStationProgress(){
+    var line = currentLine();
+    els.stationProgress.innerHTML = "";
+    els.stationProgress.style.setProperty("--line-color", line.color);
+    document.documentElement.style.setProperty("--line-color", line.color);
+    for(var i=0;i<line.stations.length;i++){
+      var d = document.createElement("span");
+      if(i < state.stationIndex) d.className = "done";
+      else if(i === state.stationIndex) d.className = "now";
+      els.stationProgress.appendChild(d);
+    }
+  }
+
+  function showCaption(text){
+    els.captionText.textContent = text;
+    els.captionText.classList.remove("show");
+    void els.captionText.offsetWidth;
+    els.captionText.classList.add("show");
+  }
+
+  function comboCaption(n){
+    if(n >= 10) return "지하철 눈치왕!";
+    if(n >= 5) return "PERFECT READ!";
+    if(n >= 1) return n + " COMBO";
+    return null;
+  }
+
+  /* ---------------- Round setup ---------------- */
+  function buildPassengers(){
+    var line = currentLine();
+    var n = line.count;
+    var list = [];
+    for(var i=0;i<n;i++){
+      list.push({ idle: pick(IDLE_ICONS), current:null, tellCount:0, tellTimer:null });
+    }
+    // flavor: on the last-train line, sprinkle a cosmetic drunk passenger
+    if(line.fakeLevel >= 2 && Math.random() < 0.5){
+      list[Math.floor(Math.random()*n)].idle = DRUNK_ICON;
+    }
+    for(var k=0;k<list.length;k++) list[k].current = list[k].idle;
+
+    var leaverIdx = Math.floor(Math.random()*n);
+
+    // difficulty ramps with line + station-within-line
+    var d = line.fakeLevel*3 + state.stationIndex; // 0..~13
+    var fakerCount = clamp(Math.floor(d/3), 0, n-1);
+    var allowArtist = d >= 5;
+
+    var others = [];
+    for(var m=0;m<n;m++) if(m!==leaverIdx) others.push(m);
+    others = shuffle(others).slice(0, fakerCount);
+
+    var artistIdx = (allowArtist && others.length) ? pick(others) : -1;
+
+    var events = []; // {idx, time}
+    // leaver: exactly one tell, weighted to the later half of the window
+    events.push({ idx:leaverIdx, time: rand(line.observeMs*0.45, line.observeMs*0.86) });
+
+    others.forEach(function(idx){
+      var tellsForThis = (idx === artistIdx) ? 2 : 1;
+      var t1 = rand(line.observeMs*0.12, line.observeMs*0.5);
+      events.push({ idx:idx, time:t1 });
+      if(tellsForThis > 1){
+        events.push({ idx:idx, time: t1 + rand(700, 1100) < line.observeMs*0.92 ? t1 + rand(700,1100) : line.observeMs*0.9 });
+      }
+    });
+
+    state.passengers = list;
+    state.leaverIdx = leaverIdx;
+    return events;
+  }
+
+  function renderBench(){
+    els.bench.innerHTML = "";
+    state.passengers.forEach(function(p, idx){
+      var seat = document.createElement("div");
+      seat.className = "seat";
+      seat.dataset.idx = idx;
+
+      var bubble = document.createElement("div");
+      bubble.className = "tell-bubble";
+      bubble.id = "bubble-" + idx;
+
+      var btn = document.createElement("button");
+      btn.className = "passenger-btn";
+      btn.id = "pbtn-" + idx;
+      btn.innerHTML = '<div class="avatar" id="avatar-'+idx+'">'+p.current+'</div><div class="seat-cushion"></div>';
+
+      seat.appendChild(bubble);
+      seat.appendChild(btn);
+      els.bench.appendChild(seat);
+
+      attachPointerHandlers(btn, idx);
+    });
+  }
+
+  function attachPointerHandlers(btn, idx){
+    var downTime = 0, chargeTimeout = null;
+    function down(e){
+      if(!state.roundActive) return;
+      downTime = Date.now();
+      btn.classList.remove("charging");
+      chargeTimeout = setTimeout(function(){ btn.classList.add("charging"); }, 380);
+    }
+    function up(e){
+      if(!state.roundActive) return;
+      clearTimeout(chargeTimeout);
+      var held = Date.now() - downTime;
+      selectPassenger(idx, held >= 420);
+    }
+    function cancel(){ clearTimeout(chargeTimeout); }
+    btn.addEventListener("pointerdown", down);
+    btn.addEventListener("pointerup", up);
+    btn.addEventListener("pointercancel", cancel);
+    btn.addEventListener("pointerleave", cancel);
+    btn.addEventListener("contextmenu", function(e){ e.preventDefault(); });
+  }
+
+  function selectPassenger(idx, confident){
+    if(!state.roundActive) return;
+    document.querySelectorAll(".passenger-btn").forEach(function(b){
+      b.classList.remove("selected","confident","charging");
+    });
+    state.selectedIdx = idx;
+    state.confident = confident;
+    var btn = document.getElementById("pbtn-"+idx);
+    btn.classList.add("selected");
+    if(confident) btn.classList.add("confident");
+  }
+
+  function flashTell(idx, icon, duration){
+    var avatar = document.getElementById("avatar-"+idx);
+    var bubble = document.getElementById("bubble-"+idx);
+    if(!avatar || !bubble) return;
+    bubble.textContent = icon;
+    bubble.classList.add("show");
+    after(duration, function(){
+      bubble.classList.remove("show");
+    });
+  }
+
+  /* ---------------- Round flow ---------------- */
+  function startStation(){
+    clearTimers();
+    state.selectedIdx = -1;
+    state.confident = false;
+    var line = currentLine();
+    var stationName = line.stations[state.stationIndex];
+
+    els.lineBadge.textContent = line.name;
+    els.lineBadge.style.background = line.color;
+    els.ledStation.textContent = "이번 역은 " + stationName;
+    els.ledSub.textContent = "승객을 관찰하세요";
+    els.resultBanner.classList.remove("show","success","fail","miss");
+    renderStationProgress();
+
+    var events = buildPassengers();
+    renderBench();
+    renderHUD();
+
+    events.forEach(function(ev){
+      after(ev.time, function(){
+        if(!state.roundActive) return;
+        flashTell(ev.idx, pick(TELL_ICONS), 900);
+      });
+    });
+
+    // timer bar
+    els.timerFill.classList.remove("running");
+    void els.timerFill.offsetWidth;
+    els.timerFill.style.animationDuration = line.observeMs + "ms";
+    els.timerFill.classList.add("running");
+
+    state.roundActive = true;
+    after(line.observeMs, doorsOpen);
+  }
+
+  function doorsOpen(){
+    state.roundActive = false;
+    els.ledSub.textContent = "문이 열립니다";
+    els.doorFlash.classList.remove("flash");
+    void els.doorFlash.offsetWidth;
+    els.doorFlash.classList.add("flash");
+
+    var correct = (state.selectedIdx === state.leaverIdx);
+    var picked = state.selectedIdx;
+    var leaver = state.leaverIdx;
+
+    after(220, function(){
+      var leaverBtn = document.getElementById("pbtn-"+leaver);
+      var leaverSeat = leaverBtn.closest(".seat");
+      leaverBtn.classList.add("leaving");
+
+      if(correct){
+        leaverSeat.classList.add("correct");
+        var bonus = state.confident ? 2 : 1;
+        var gained = 100 * bonus + state.combo * 10;
+        state.score += gained;
+        state.combo += 1;
+        state.bestCombo = Math.max(state.bestCombo, state.combo);
+        renderHUD();
+        showResult("success", "촉 적중! +" + gained + (state.confident ? " (확신 ×2)" : ""), "정확히 예측했습니다");
+        var cap = comboCaption(state.combo);
+        if(cap) after(150, function(){ showCaption(cap); });
+      } else {
+        if(picked !== -1){
+          var pickedBtn = document.getElementById("pbtn-"+picked);
+          pickedBtn.closest(".seat").classList.add("wrong-pick");
+        }
+        state.combo = 0;
+        renderHUD();
+        var msg = picked === -1 ? "못 골랐다..." : "자리 뺏김!";
+        var sub = picked === -1 ? "선택 시간이 지났습니다" : "정답은 다른 승객이었어요";
+        showResult("fail", msg, sub);
+
+        // a rival rushes into the now-empty seat
+        after(650, function(){
+          var newIcon = pick(IDLE_ICONS);
+          leaverBtn.querySelector(".avatar").textContent = newIcon;
+          leaverBtn.classList.remove("leaving");
+          leaverSeat.classList.add("rush-in");
+        });
+      }
+    });
+
+    after(2000, nextStation);
+  }
+
+  function showResult(type, text, sub){
+    els.resultBanner.className = "result-banner show " + type;
+    els.resultText.textContent = text;
+    els.resultSub.textContent = sub;
+    after(1550, function(){
+      els.resultBanner.classList.remove("show");
+    });
+  }
+
+  function nextStation(){
+    state.stationIndex += 1;
+    var line = currentLine();
+    if(state.stationIndex >= line.stations.length){
+      showSummary();
+    } else {
+      startStation();
+    }
+  }
+
+  /* ---------------- Summary / progression ---------------- */
+  function badgeFor(score){
+    var b = TITLE_BRACKETS[0];
+    TITLE_BRACKETS.forEach(function(t){ if(score >= t.min) b = t; });
+    return b.name;
+  }
+
+  function showSummary(){
+    clearTimers();
+    var line = currentLine();
+    els.summaryTitle.textContent = line.name + " 완주!";
+    els.summarySubLine.textContent = "SEOUL METRO · " + line.stations.length + " STATIONS";
+    els.summaryScore.textContent = String(state.score).padStart(4,"0");
+    var pct = clamp(Math.round(100 - state.score/38), 1, 97);
+    els.summaryRank.textContent = "지하철 눈치력 상위 " + pct + "%";
+    els.summaryBadge.textContent = badgeFor(state.score);
+    els.summaryCombo.textContent = "최고 콤보 " + state.bestCombo + "연속";
+
+    var isLast = state.lineIndex >= LINES.length - 1;
+    els.nextBtn.style.display = isLast ? "none" : "inline-block";
+    els.nextBtn.textContent = isLast ? "" : ("다음 노선 타기 — " + LINES[state.lineIndex+1].name);
+    els.restartBtn.textContent = isLast ? "처음부터 다시 (게임 클리어!)" : "처음부터 다시";
+
+    els.summaryScreen.classList.remove("hidden");
+  }
+
+  function goNextLine(){
+    els.summaryScreen.classList.add("hidden");
+    state.lineIndex += 1;
+    state.stationIndex = 0;
+    startStation();
+  }
+
+  function restartGame(){
+    els.summaryScreen.classList.add("hidden");
+    state.lineIndex = 0;
+    state.stationIndex = 0;
+    state.score = 0;
+    state.combo = 0;
+    state.bestCombo = 0;
+    startStation();
+  }
+
+  /* ---------------- Boot ---------------- */
+  els.startBtn.addEventListener("click", function(){
+    els.startScreen.classList.add("hidden");
+    startStation();
+  });
+  els.nextBtn.addEventListener("click", goNextLine);
+  els.restartBtn.addEventListener("click", restartGame);
+
+  renderHUD();
+})();
+</script>
+</body>
+</html>
