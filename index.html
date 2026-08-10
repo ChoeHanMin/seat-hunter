@@ -6,6 +6,9 @@
 <title>자리 사냥 — Seat Hunter</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#0c1017">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="자리 사냥">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -30,7 +33,7 @@
     background:repeating-linear-gradient(180deg, rgba(255,255,255,.02) 0 2px, transparent 2px 4px),
       radial-gradient(circle at 15% 8%, rgba(255,183,3,.05), transparent 40%); }
 
-  .led-sign{ position:relative; z-index:2; background:#05070b; padding:8px 14px 6px; border-bottom:3px solid #000;
+  .led-sign{ position:relative; z-index:2; background:#05070b; padding:max(8px, env(safe-area-inset-top)) 14px 6px; border-bottom:3px solid #000;
     font-family:'DotGothic16', monospace; flex-shrink:0; }
   .led-top-row{ display:flex; align-items:baseline; justify-content:space-between; gap:8px; }
   .led-line-badge{ font-size:11px; padding:2px 8px; border-radius:3px; background:var(--line-color, var(--line-green));
@@ -191,6 +194,32 @@
   .dex-name{ font-size:10.5px; color:var(--paper); margin-top:4px; }
   .dex-count{ font-size:9px; color:var(--steel-400); margin-top:2px; }
 
+  .villain-card{ max-width:320px; }
+  .villain-stage{ position:relative; width:100%; height:220px; margin:14px 0;
+    display:flex; align-items:flex-end; justify-content:center; overflow:hidden; }
+  .villain-sprite-wrap{ width:120px; aspect-ratio:44/138; transition:transform .55s ease-in, opacity .55s ease-in; }
+  .villain-sprite-wrap.villain-spread{ transform:scaleX(1.9); }
+  .villain-sprite-wrap.villain-lying{ transform:rotate(90deg) translateY(6px); }
+  .villain-tap-target{ position:absolute; inset:0; cursor:pointer; touch-action:manipulation; }
+  .villain-tap-count{ font-family:'DotGothic16', monospace; color:var(--signage-amber); font-size:19px; }
+  .villain-sprite-wrap.tap-shake{ animation:villainShake .15s; }
+  @keyframes villainShake{ 0%,100%{ filter:brightness(1); } 40%{ filter:brightness(1.4) saturate(1.3); } }
+  .villain-card.fleeing .villain-sprite-wrap.villain-spread{ transform:scaleX(1.9) translateX(260px) rotate(15deg); opacity:0; }
+  .villain-card.fleeing .villain-sprite-wrap.villain-lying{ transform:rotate(90deg) translateX(260px); opacity:0; }
+  .villain-card.fleeing .villain-tap-target{ pointer-events:none; }
+
+  .intro-overlay{ position:absolute; inset:0; z-index:50; background:#000; cursor:pointer; overflow:hidden; }
+  .intro-streaks{ position:absolute; inset:0;
+    background:repeating-linear-gradient(100deg, transparent 0 40px, rgba(255,183,3,.28) 41px 44px, transparent 45px 90px);
+    animation:introSlide .5s linear infinite; }
+  @keyframes introSlide{ from{ background-position-x:0; } to{ background-position-x:-200px; } }
+  .intro-skip{ position:absolute; bottom:40px; left:0; right:0; text-align:center; color:var(--steel-400); font-size:12px; }
+
+  .a11y-caption{ position:fixed; left:50%; bottom:70px; transform:translateX(-50%); z-index:60;
+    background:rgba(5,7,11,.9); color:var(--signage-amber); font-family:'DotGothic16', monospace; font-size:13px;
+    padding:6px 14px; border-radius:8px; opacity:0; transition:opacity .2s; pointer-events:none; }
+  .a11y-caption.show{ opacity:1; }
+
   /* accessibility */
   .ui-scale-lg .selector-label, .ui-scale-lg .bottom-hint, .ui-scale-lg .btn-tag, .ui-scale-lg .btn-num,
   .ui-scale-lg .led-station, .ui-scale-lg .result-banner, .ui-scale-lg .next-stop-banner span,
@@ -224,6 +253,7 @@
   @keyframes shakeNo{ 0%,100%{transform:translateX(0);} 25%{transform:translateX(-4px);} 75%{transform:translateX(4px);} }
 
   .sprite-root{ animation:breathe 2.4s ease-in-out infinite; transform-box:fill-box; transform-origin:50% 100%; }
+  .body-teen{ transform-box:fill-box; transform-origin:50% 100%; transform:scale(.82); }
   @keyframes breathe{ 0%,100%{ transform:translateY(0); } 50%{ transform:translateY(-1px); } }
   .sprite-head{ transform-box:fill-box; transform-origin:50% 100%; }
   .head-anim-sleep{ animation:headDroop 3.2s ease-in-out infinite; }
@@ -275,7 +305,7 @@
   .door-flash.flash{ animation:doorFlash .5s ease-out; }
   @keyframes doorFlash{ 0%{opacity:.55;} 100%{opacity:0;} }
 
-  .bottom-bar{ flex-shrink:0; padding:5px 16px 10px; text-align:center; position:relative; z-index:2; }
+  .bottom-bar{ flex-shrink:0; padding:5px 16px max(10px, env(safe-area-inset-bottom)); text-align:center; position:relative; z-index:2; }
   .bottom-hint{ font-size:10.5px; color:var(--steel-400); }
   .bottom-hint b{ color:var(--steel-300); }
 
@@ -307,6 +337,11 @@
 
 <div id="stage">
   <div class="tunnel-window"></div>
+  <div class="intro-overlay hidden" id="introOverlay">
+    <div class="intro-streaks"></div>
+    <div class="intro-skip">탭하면 건너뛰기</div>
+  </div>
+  <div class="a11y-caption" id="a11yCaption"></div>
 
   <div class="led-sign">
     <div class="led-top-row">
@@ -351,7 +386,7 @@
       <div class="bench" id="bench"></div>
     </div>
 
-    <div class="selector-label">곧 내릴 것 같은 사람을 고르세요</div>
+    <div class="selector-label" id="selectorLabel">곧 내릴 것 같은 사람을 고르세요</div>
     <div class="selector-row" id="selectorRow"></div>
   </div>
 
@@ -365,6 +400,7 @@
     <div class="icon-btn-row">
       <button class="icon-btn" id="settingsBtn">⚙️ 설정</button>
       <button class="icon-btn" id="collectionBtn">📖 도감</button>
+      <button class="icon-btn" id="achievementsBtn">🏆 업적</button>
       <button class="icon-btn" id="devBtn">👨‍💻 개발자</button>
     </div>
     <div class="mode-tabs" id="modeTabs">
@@ -382,9 +418,9 @@
     <p class="tagline" id="modeTagline">지하철 문이 열리기 전, 누가 내릴지<br>먼저 알아채는 사람이 자리를 가진다.</p>
     <div class="best-record" id="bestRecord">아직 기록이 없어요</div>
     <ul class="rule-list">
-      <li><span class="emoji">👀</span> 승객들을 관찰하고, 아래 버튼으로 곧 내릴 것 같은 사람을 고르세요.</li>
-      <li><span class="emoji">❗</span> 신호가 뜨면 표정이 놀란 얼굴로 바뀝니다 — 진짜는 딱 1번뿐이에요.</li>
-      <li><span class="emoji">🏃</span> 가끔 라이벌이 같은 사람을 노려요 — 먼저 골라야 자리를 지킵니다.</li>
+      <li><span class="emoji">👀</span> <span id="ruleText1">승객들을 관찰하고, 아래 버튼으로 곧 내릴 것 같은 사람을 고르세요.</span></li>
+      <li><span class="emoji">❗</span> <span id="ruleText2">신호가 뜨면 표정이 놀란 얼굴로 바뀝니다 — 진짜는 딱 1번뿐이에요.</span></li>
+      <li><span class="emoji">🏃</span> <span id="ruleText3">가끔 라이벌이 같은 사람을 노려요 — 먼저 골라야 자리를 지킵니다.</span></li>
     </ul>
     <button class="btn-primary" id="startBtn">승차하기</button>
   </div>
@@ -397,8 +433,17 @@
     <div class="summary-title-badge" id="summaryBadge">지하철 초보</div>
     <div class="summary-combo" id="summaryCombo">최고 콤보 0연속</div>
     <button class="btn-primary" id="nextBtn">다음 노선 타기</button>
+    <button class="btn-primary" id="adReviveBtn" style="display:none; background:#3aa0d9; box-shadow:0 6px 0 #257aab;">📺 광고 보고 부활하기</button>
     <button class="btn-secondary" id="shareBtn">📷 결과 이미지 저장</button>
     <button class="btn-secondary" id="restartBtn">처음부터 다시</button>
+  </div>
+
+  <div class="modal-backdrop hidden" id="adModal">
+    <div class="modal-card">
+      <div style="font-size:40px;">📺</div>
+      <h3>광고 재생 중...</h3>
+      <p id="adModalText">잠시만 기다려주세요</p>
+    </div>
   </div>
 
   <div class="modal-backdrop hidden" id="settingsModal">
@@ -407,12 +452,21 @@
       <div class="setting-row"><span>사운드</span><div class="toggle-switch" id="soundToggle"></div></div>
       <div class="setting-row"><span>진동</span><div class="toggle-switch" id="vibrateToggle"></div></div>
       <div class="setting-row"><span>색약 모드</span><div class="toggle-switch" id="colorblindToggle"></div></div>
+      <div class="setting-row"><span>효과음 자막</span><div class="toggle-switch" id="captionsToggle"></div></div>
+      <div style="margin-top:10px; text-align:left;">
+        <div style="font-size:12px; color:var(--steel-400); margin-bottom:6px;">배경음(지하철 소음) 음량</div>
+        <input type="range" id="bgmSlider" min="0" max="100" value="50" style="width:100%;">
+      </div>
       <div style="margin-top:12px; text-align:left;">
         <div style="font-size:12px; color:var(--steel-400); margin-bottom:6px;">글씨 크기</div>
         <div class="scale-row">
           <button class="scale-btn selected" data-scale="normal">보통</button>
           <button class="scale-btn" data-scale="large">크게</button>
         </div>
+      </div>
+      <div style="margin-top:12px; text-align:left;">
+        <div style="font-size:12px; color:var(--steel-400); margin-bottom:6px;">차량 테마</div>
+        <div class="scale-row" id="themeRow"></div>
       </div>
       <button class="modal-close" id="settingsModalClose">닫기</button>
     </div>
@@ -423,6 +477,14 @@
       <h3>승객 도감</h3>
       <div class="dex-grid" id="dexGrid"></div>
       <button class="modal-close" id="collectionModalClose">닫기</button>
+    </div>
+  </div>
+
+  <div class="modal-backdrop hidden" id="achievementsModal">
+    <div class="modal-card">
+      <h3>업적</h3>
+      <div class="dex-grid" id="achGrid"></div>
+      <button class="modal-close" id="achievementsModalClose">닫기</button>
     </div>
   </div>
 
@@ -446,6 +508,18 @@
         <button class="btn-primary" id="eventYieldBtn" style="flex:1; padding:12px 0; font-size:14px;">자리 양보하기</button>
         <button class="btn-secondary" id="eventIgnoreBtn" style="flex:1; margin-top:0;">모른 척하기</button>
       </div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop hidden" id="villainModal">
+    <div class="modal-card villain-card" id="villainCard">
+      <h3 id="villainTitle">빌런 출현!</h3>
+      <p id="villainHint">빠르게 탭해서 부끄럽게 만드세요!</p>
+      <div class="villain-stage">
+        <div class="sprite-wrap villain-sprite-wrap" id="villainSprite"></div>
+        <div class="villain-tap-target" id="villainTapTarget"></div>
+      </div>
+      <div class="villain-tap-count" id="villainTapCount">0 / 4</div>
     </div>
   </div>
 </div>
@@ -477,6 +551,53 @@
   function sfxArrival(){ tone(784,0,0.13,"sine",0.07); tone(988,0.14,0.18,"sine",0.07); }
   function vib(pattern){ if(!settings.vibrate) return; try{ if(navigator.vibrate) navigator.vibrate(pattern); }catch(e){} }
 
+  /* ---- subway rumble BGM: procedurally generated, no external audio files ---- */
+  var bgmNodes = null;
+  function startBGM(){
+    if(!settings.sound || (settings.bgmVolume||0) <= 0) return;
+    var ctx = ensureAudio(); if(!ctx) return;
+    if(bgmNodes) return; // already running
+    try{
+      var bufferSize = ctx.sampleRate * 2;
+      var buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+      var data = buffer.getChannelData(0);
+      var lastOut = 0;
+      for(var i=0;i<bufferSize;i++){
+        var white = Math.random()*2-1;
+        lastOut = (lastOut + (0.02*white)) / 1.02;
+        data[i] = lastOut * 3.2;
+      }
+      var noise = ctx.createBufferSource();
+      noise.buffer = buffer; noise.loop = true;
+      var lp = ctx.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 230;
+      var gain = ctx.createGain(); gain.gain.value = (settings.bgmVolume||0.5) * 0.055;
+      noise.connect(lp); lp.connect(gain); gain.connect(ctx.destination);
+      noise.start();
+
+      var clackTimer = setInterval(function(){
+        if(!settings.sound || (settings.bgmVolume||0) <= 0) return;
+        var v = (settings.bgmVolume||0.5) * 0.05;
+        tone(92, 0, 0.05, "square", v);
+        tone(68, 0.09, 0.06, "square", v*0.8);
+      }, 560);
+
+      bgmNodes = { noise:noise, gain:gain, clackTimer:clackTimer };
+    }catch(e){}
+  }
+  function stopBGM(){
+    if(bgmNodes){
+      try{ bgmNodes.noise.stop(); }catch(e){}
+      clearInterval(bgmNodes.clackTimer);
+      bgmNodes = null;
+    }
+  }
+  function setBGMVolume(v){
+    settings.bgmVolume = v; saveSettings();
+    if(bgmNodes) bgmNodes.gain.gain.value = v * 0.055;
+    if(v > 0 && !bgmNodes) startBGM();
+    if(v <= 0) stopBGM();
+  }
+
   /* ============ LOCAL RECORDS ============ */
   var RECORD_KEY = "seatHunterRecords_v1";
   function loadRecords(){ try{ var raw = localStorage.getItem(RECORD_KEY); return raw ? JSON.parse(raw) : {}; }catch(e){ return {}; } }
@@ -497,7 +618,7 @@
   /* ============ SETTINGS ============ */
   var SETTINGS_KEY = "seatHunterSettings_v1";
   function loadSettings(){
-    var def = {sound:true, vibrate:true, textScale:"normal", colorblind:false};
+    var def = {sound:true, vibrate:true, textScale:"normal", colorblind:false, bgmVolume:0.5, captions:false, theme:"default", uiLang:"auto"};
     try{ var raw = localStorage.getItem(SETTINGS_KEY); return raw ? Object.assign(def, JSON.parse(raw)) : def; }catch(e){ return def; }
   }
   var settings = loadSettings();
@@ -511,6 +632,69 @@
   function recordSeen(archetype){ collection[archetype] = (collection[archetype]||0) + 1; saveCollection(); }
   var DEX_ICON = { sleep:"😴", phone:"📱", bag:"🎒", map:"🗺️", earbud:"🎧", book:"📖", drunk:"🍺" };
   var DEX_ORDER = ["sleep","phone","bag","map","earbud","book","drunk"];
+
+  /* ============ STATS & ACHIEVEMENTS ============ */
+  var STATS_KEY = "seatHunterStats_v1";
+  function loadStats(){ try{ var raw = localStorage.getItem(STATS_KEY); return raw ? JSON.parse(raw) : {}; }catch(e){ return {}; } }
+  function saveStats(){ try{ localStorage.setItem(STATS_KEY, JSON.stringify(stats)); }catch(e){} }
+  var stats = loadStats();
+  function bumpStat(key, amount){ stats[key] = (stats[key]||0) + (amount==null?1:amount); saveStats(); checkAchievements(); }
+  function maxStat(key, value){ stats[key] = Math.max(stats[key]||0, value); saveStats(); checkAchievements(); }
+
+  var ACH_KEY = "seatHunterAchievements_v1";
+  function loadAchievements(){ try{ var raw = localStorage.getItem(ACH_KEY); return raw ? JSON.parse(raw) : {}; }catch(e){ return {}; } }
+  function saveAchievements(){ try{ localStorage.setItem(ACH_KEY, JSON.stringify(unlockedAch)); }catch(e){} }
+  var unlockedAch = loadAchievements();
+
+  var ACHIEVEMENTS = [
+    { id:"firstWin",   name:"첫 적중",       desc:"첫 성공 예측",              statKey:"totalHits", goal:1 },
+    { id:"combo20",    name:"콤보 마스터",   desc:"콤보 20 달성",              check:function(){ return state.bestCombo >= 20; } },
+    { id:"rival5",     name:"라이벌 킬러",   desc:"라이벌 이기기 5회",         statKey:"rivalWins", goal:5 },
+    { id:"villain10",  name:"빌런 헌터",     desc:"빌런 10번 쫓아내기",        statKey:"villainWins", goal:10 },
+    { id:"campaignClear", name:"완주자",     desc:"캠페인 노선 완주",          statKey:"campaignClears", goal:1 },
+    { id:"speed10",    name:"생존왕",        desc:"스피드 모드 10라운드 생존", statKey:"speedBestRound", goal:10 },
+    { id:"dexFull",    name:"승객 도감 마스터", desc:"승객 7종 전부 목격",     check:function(){ return Object.keys(collection).length >= 7; } },
+    { id:"confident10", name:"확신러",       desc:"확신 베팅 성공 10회",       statKey:"confidentWins", goal:10 },
+    { id:"event10",    name:"배려왕",        desc:"특별 이벤트 10회 처리",     statKey:"eventsHandled", goal:10 },
+    { id:"score5000",  name:"눈치 고수",     desc:"누적 점수 5000 달성",       statKey:"lifetimeScore", goal:5000 }
+  ];
+  function checkAchievements(){
+    ACHIEVEMENTS.forEach(function(a){
+      if(unlockedAch[a.id]) return;
+      var done = a.check ? a.check() : (stats[a.statKey]||0) >= a.goal;
+      if(done){ unlockedAch[a.id] = true; saveAchievements(); showAchievementToast(a); }
+    });
+  }
+  function showAchievementToast(a){ showCaption("🏆 " + a.name); sfxCombo(); }
+
+  /* ============ CAR THEMES ============ */
+  var THEMES = {
+    default: { name:"기본", unlock:0, colors:{ car750:"#293244", car700:"#313c50", seatAmber:"#d98a3d", seatAmberDark:"#a96826" } },
+    night:   { name:"보라매트로 야간", unlock:1000, colors:{ car750:"#2a2440", car700:"#332b52", seatAmber:"#8b5cf6", seatAmberDark:"#6d3fd1" } },
+    autumn:  { name:"단풍 열차", unlock:3000, colors:{ car750:"#3a2a20", car700:"#4a3528", seatAmber:"#e0793a", seatAmberDark:"#b8541f" } }
+  };
+  function applyTheme(themeKey){
+    var t = THEMES[themeKey] || THEMES.default;
+    var stageEl = document.getElementById("stage");
+    stageEl.style.setProperty("--car-750", t.colors.car750);
+    stageEl.style.setProperty("--car-700", t.colors.car700);
+    stageEl.style.setProperty("--seat-amber", t.colors.seatAmber);
+    stageEl.style.setProperty("--seat-amber-dark", t.colors.seatAmberDark);
+  }
+
+  /* ============ SEASONAL EVENTS ============ */
+  function currentSeason(){
+    var m = new Date().getMonth();
+    if(m === 9) return "halloween";
+    if(m === 11) return "christmas";
+    return null;
+  }
+  function seasonExtraRects(season){
+    var R = function(x,y,w,h,c){ return {x:x,y:y,w:w,h:h,fill:c,cls:""}; };
+    if(season === "halloween") return [ R(10,-3,24,5,"seasonPumpkin"), R(18,-6,8,4,"seasonPumpkinStem") ];
+    if(season === "christmas") return [ R(6,-2,32,6,"seasonSanta"), R(32,-6,7,7,"seasonSantaPom") ];
+    return [];
+  }
 
   var CAMPAIGN_WORLDS = {
     seoul: [
@@ -602,6 +786,13 @@
       case "phoneBody": return "#1c2430";
       case "phoneGlow": return "#ffe08a";
       case "paper": return "#e8ded0";
+      case "babySkin": return "#f5d0a9";
+      case "babyHair": return "#c9a876";
+      case "babyBlanket": return "#ffd0e0";
+      case "seasonPumpkin": return "#ff8c1a";
+      case "seasonPumpkinStem": return "#2e7d32";
+      case "seasonSanta": return "#c1272d";
+      case "seasonSantaPom": return "#ffffff";
       default: return "#888";
     }
   }
@@ -682,25 +873,41 @@
   };
   var ARCH_TAG = { sleep:"수면중", drunk:"취기중", phone:"폰 삼매경", bag:"가방 정리", map:"노선도 확인", earbud:"이어폰", book:"독서중" };
 
-  function spriteSVG(archetype, colors, lineColor, fidget){
+  /* ---- body-type diversity: layered on top of behavior archetype ---- */
+  var BODY_TYPES = ["adult","adult","adult","adult","teen","elderly","pregnant","adult_baby"];
+  var GREY_HAIR_PAIRS = [ {base:"#8a8a8a",light:"#b5b5b5"}, {base:"#c9c9c9",light:"#e5e5e5"} ];
+  function bodyExtraRects(bodyType){
+    var R = function(x,y,w,h,c){ return {x:x,y:y,w:w,h:h,fill:c,cls:""}; };
+    if(bodyType === "pregnant") return [ R(9,68,26,16,"shirt"), R(11,84,22,4,"shirtDark") ];
+    if(bodyType === "elderly")  return [ R(38,98,2,38,"dark"), R(36,96,6,3,"dark") ];
+    if(bodyType === "teen")     return [ R(1,50,3,22,"prop1"), R(40,50,3,22,"prop1") ];
+    if(bodyType === "adult_baby") return [
+      R(15,96,8,14,"babyBlanket"), R(12,88,14,3,"babyHair"), R(14,90,10,10,"babySkin")
+    ];
+    return [];
+  }
+
+  function spriteSVG(archetype, colors, lineColor, fidget, bodyType, season){
+    bodyType = bodyType || "adult";
     var hairBackSVG = rectsToSVG(HAIR_BACK, colors, lineColor);
     var faceSkinSVG = rectsToSVG(FACE_SKIN, colors, lineColor);
     var hairSideSVG = rectsToSVG(HAIR_SIDES.concat(HAIR_STRANDS), colors, lineColor);
     var faceLayer = rectsToSVG(FACES[archetype], colors, lineColor);
     var alertLayer = rectsToSVG(FACE_ALERT, colors, lineColor);
     var legsSVG = rectsToSVG(LEGS, colors, lineColor);
+    var bodyExtraSVG = rectsToSVG(bodyExtraRects(bodyType), colors, lineColor);
+    var seasonSVG = season ? rectsToSVG(seasonExtraRects(season), colors, lineColor) : "";
     var torsoLayer = rectsToSVG(TORSO, colors, lineColor) + rectsToSVG(TAILS[archetype], colors, lineColor) +
-      '<g class="'+(fidget?"legs-fidget":"")+'">'+legsSVG+'</g>';
+      bodyExtraSVG + '<g class="'+(fidget?"legs-fidget":"")+'">'+legsSVG+'</g>';
 
-    var extras = "";
+    var extras = seasonSVG;
     if(archetype === "sleep" || archetype === "drunk"){
       extras += '<text class="zzz z1" x="32" y="6" font-size="7">z</text>';
       extras += '<text class="zzz z2" x="36" y="1" font-size="9">z</text>';
     }
 
     var headClass = "sprite-head head-anim-" + archetype;
-    return '<svg viewBox="0 0 44 138" xmlns="http://www.w3.org/2000/svg">'+
-      '<g class="sprite-root">'+
+    var inner = '<g class="sprite-root">'+
         '<g>'+torsoLayer+'</g>'+
         '<g class="'+headClass+'">'+hairBackSVG+faceSkinSVG+
           '<g class="hair-sway">'+hairSideSVG+'</g>'+
@@ -708,7 +915,9 @@
           '<g class="face-alert">'+alertLayer+'</g>'+
         '</g>'+
         extras+
-      '</g></svg>';
+      '</g>';
+    if(bodyType === "teen"){ inner = '<g class="body-teen">'+inner+'</g>'; }
+    return '<svg viewBox="0 0 44 138" xmlns="http://www.w3.org/2000/svg">'+inner+'</svg>';
   }
 
   /* ============ DOM refs ============ */
@@ -716,9 +925,14 @@
   ["lineBadge","ledStation","ledSub","stationProgress","scoreVal","comboVal","comboBlock",
    "captionText","timerFill","resultBanner","resultText","resultSub","nextStopBanner","nextStopText","doorFlash","bench","selectorRow","strapsRow","routeStrip",
    "bottomHint","startScreen","summaryScreen","startBtn","nextBtn","restartBtn","shareBtn","modeTagline","bestRecord","tutorialHint",
+   "adReviveBtn","adModal","adModalText",
    "worldRow","settingsBtn","collectionBtn","devBtn","settingsModal","settingsModalClose","soundToggle","vibrateToggle","colorblindToggle",
    "collectionModal","collectionModalClose","dexGrid","devModal","devModalClose",
+   "achievementsBtn","achievementsModal","achievementsModalClose","achGrid",
+   "captionsToggle","bgmSlider","themeRow","introOverlay","a11yCaption",
+   "selectorLabel","ruleText1","ruleText2","ruleText3",
    "specialEventModal","eventIcon","eventText","eventYieldBtn","eventIgnoreBtn",
+   "villainModal","villainCard","villainSprite","villainTapTarget","villainTapCount","villainTitle","villainHint",
    "summaryTitle","summarySubLine","summaryScore","summaryRank","summaryBadge","summaryCombo"
   ].forEach(function(id){ els[id] = document.getElementById(id); });
 
@@ -747,7 +961,7 @@
   var state = { lineIndex:0, stationIndex:0, score:0, combo:0, bestCombo:0, mode:"campaign", world:"seoul",
     passengers:[], leaverIdx:-1, selectedIdx:-1, confident:false, roundActive:false, timers:[],
     rival:{active:false,claimTime:0,revealed:false}, endless:{roundNum:0,deadline:0}, syntheticLine:null,
-    lastRoundFailed:false, selectionElapsed:null, roundStartTime:0, doorSide:"왼쪽" };
+    lastRoundFailed:false, selectionElapsed:null, roundStartTime:0, doorSide:"왼쪽", adReviveUsed:false };
 
 
   function clamp(n,a,b){ return Math.max(a,Math.min(b,n)); }
@@ -819,7 +1033,15 @@
     var n = line.count;
     var pool = shuffle(ARCHETYPES.concat(ARCHETYPES)).slice(0, n);
     if(line.fakeLevel >= 2 && Math.random() < 0.55){ pool[Math.floor(Math.random()*n)] = "drunk"; }
-    var list = pool.map(function(arch){ return { archetype:arch, colors:randomColors(arch) }; });
+    var list = pool.map(function(arch){
+      var bt = pick(BODY_TYPES);
+      var colors = randomColors(arch);
+      if(bt === "elderly"){
+        var gp = pick(GREY_HAIR_PAIRS);
+        colors.hair = gp.base; colors.hairLight = gp.light;
+      }
+      return { archetype:arch, colors:colors, bodyType:bt, season: (currentSeason() && Math.random() < 0.25) ? currentSeason() : null };
+    });
 
     var leaverIdx = Math.floor(Math.random()*n);
     var d = line.fakeLevel*3 + state.stationIndex;
@@ -865,7 +1087,7 @@
 
       var wrap = document.createElement("div");
       wrap.className = "sprite-wrap"; wrap.id = "sprite-"+idx;
-      wrap.innerHTML = spriteSVG(p.archetype, p.colors, line.color, Math.random()<0.25);
+      wrap.innerHTML = spriteSVG(p.archetype, p.colors, line.color, Math.random()<0.25, p.bodyType, p.season);
 
       var cushion = document.createElement("div"); cushion.className = "seat-cushion";
 
@@ -940,6 +1162,7 @@
     els.lineBadge.style.background = line.color;
     els.ledStation.textContent = ANNOUNCE[lang].next(stationName);
     els.ledSub.textContent = ANNOUNCE[lang].door(doorSide);
+    if(els.selectorLabel) els.selectorLabel.textContent = (UI_STRINGS[lang] || UI_STRINGS.ko).selectorLabel;
     els.resultBanner.classList.remove("show","success","fail");
     if(els.tutorialHint) els.tutorialHint.classList.remove("show");
     renderStationProgress();
@@ -1014,6 +1237,9 @@
         var cap = comboCaption(state.combo);
         if(cap) after(150, function(){ showCaption(cap); if(state.combo>=5) sfxCombo(); });
         state.lastRoundFailed = false;
+        bumpStat("totalHits"); bumpStat("lifetimeScore", gained);
+        if(state.confident) bumpStat("confidentWins");
+        if(state.rival.active) bumpStat("rivalWins");
       } else {
         if(picked !== -1){ document.getElementById("seat-"+picked).classList.add("wrong-pick"); }
         state.combo = 0; renderHUD();
@@ -1064,11 +1290,26 @@
       });
     });
 
-    // running gag: the next-stop banner always insists the next station is 한민역, no matter the line or world
-    var text = "다음 역은 한민, 한민역입니다.";
+    // banner announces the real next station, matching the LED sign above (fixes the mismatch bug)
+    var nextIdx = state.stationIndex + 1;
+    var lang = langOf(line);
+    var text;
+    if(state.mode === "campaign"){
+      if(nextIdx < line.stations.length){
+        text = ANNOUNCE[lang].depart(line.stations[nextIdx]);
+      } else {
+        text = ANNOUNCE[lang].terminus;
+      }
+    } else if(state.mode === "speed" || state.mode === "duel"){
+      text = state.lastRoundFailed ? "하차합니다. 수고하셨습니다." : "다음 구간으로 이동합니다.";
+    } else {
+      var remain = Math.max(0, Math.round((state.endless.deadline - Date.now())/1000));
+      text = remain > 0 ? ("다음 구간으로 이동합니다 · 남은 시간 " + remain + "초") : "운행이 종료됩니다.";
+    }
     els.nextStopText.textContent = text;
     els.nextStopBanner.classList.add("show");
     sfxArrival();
+    a11yCaption("🔔 도착 안내음");
     after(1500, function(){
       els.nextStopBanner.classList.remove("show");
       nextStation();
@@ -1079,6 +1320,7 @@
     var icon = type === "success" ? "✅ " : "❌ ";
     els.resultBanner.className = "result-banner show " + type;
     els.resultText.textContent = icon + text; els.resultSub.textContent = sub;
+    a11yCaption(type === "success" ? "✅ 정답 효과음" : "❌ 오답 효과음");
     after(1550, function(){ els.resultBanner.classList.remove("show"); });
   }
 
@@ -1105,11 +1347,11 @@
 
   /* ============ SPECIAL EVENT PASSENGERS ============ */
   function maybeSpecialEvent(proceedFn){
-    if(state.mode === "campaign" && Math.random() < 0.22){
-      showSpecialEvent(proceedFn);
-    } else {
-      proceedFn();
-    }
+    if(state.mode !== "campaign"){ proceedFn(); return; }
+    var roll = Math.random();
+    if(roll < 0.12){ showVillainEvent(proceedFn); }
+    else if(roll < 0.12 + 0.14){ showSpecialEvent(proceedFn); }
+    else { proceedFn(); }
   }
   function showSpecialEvent(proceedFn){
     var kind = Math.random() < 0.5 ? "pregnant" : "elderly";
@@ -1126,15 +1368,64 @@
         state.score += 50; renderHUD();
         showResult("success", "자리를 양보했습니다 +50", "훈훈한 지하철");
         sfxSuccess(); vib(50);
+        bumpStat("lifetimeScore", 50);
       } else {
         state.combo = 0; renderHUD();
         showResult("fail", "못 본 척했다...", "콤보가 초기화됐어요");
         sfxFail();
       }
+      bumpStat("eventsHandled");
       proceedFn();
     }
     els.eventYieldBtn.onclick = function(){ resolve(true); };
     els.eventIgnoreBtn.onclick = function(){ resolve(false); };
+  }
+
+  function showVillainEvent(proceedFn){
+    var kind = Math.random() < 0.5 ? "spread" : "lying";
+    var arch = ARCHETYPES[Math.floor(Math.random()*ARCHETYPES.length)];
+    var colors = randomColors(arch);
+    var lineColor = currentLine().color;
+
+    els.villainSprite.innerHTML = spriteSVG(arch, colors, lineColor, false, "adult");
+    els.villainSprite.classList.remove("villain-spread","villain-lying","tap-shake");
+    els.villainSprite.classList.add(kind === "lying" ? "villain-lying" : "villain-spread");
+    els.villainCard.classList.remove("fleeing");
+    els.villainTitle.textContent = kind === "lying" ? "완전히 드러누웠다!" : "다리를 쫙 벌리고 두 자리를 차지했다!";
+    els.villainHint.textContent = "빠르게 탭해서 부끄럽게 만드세요!";
+
+    var taps = 0, need = 4, done = false;
+    els.villainTapCount.textContent = taps + " / " + need;
+    els.villainModal.classList.remove("hidden");
+
+    function finish(success){
+      if(done) return;
+      done = true;
+      els.villainTapTarget.onclick = null;
+      if(success){
+        els.villainCard.classList.add("fleeing");
+        state.score += 80; renderHUD();
+        showResult("success", "빌런 도망감! +80", "덕분에 자리가 넓어졌어요");
+        sfxSuccess(); vib(50);
+        bumpStat("villainWins"); bumpStat("lifetimeScore", 80);
+        after(650, function(){ els.villainModal.classList.add("hidden"); proceedFn(); });
+      } else {
+        showResult("fail", "결국 못 쫓아냈다...", "다음 역까지 계속 저러고 있었다");
+        sfxFail();
+        after(500, function(){ els.villainModal.classList.add("hidden"); proceedFn(); });
+      }
+    }
+
+    els.villainTapTarget.onclick = function(){
+      if(done) return;
+      taps++;
+      els.villainTapCount.textContent = taps + " / " + need;
+      els.villainSprite.classList.remove("tap-shake"); void els.villainSprite.offsetWidth; els.villainSprite.classList.add("tap-shake");
+      sfxTap(); vib(15);
+      if(taps >= need) finish(true);
+    };
+
+    after(3000, function(){ finish(false); });
   }
   function badgeFor(score){
     var b = TITLE_BRACKETS[0];
@@ -1156,11 +1447,14 @@
     els.nextBtn.style.display = isLast ? "none" : "inline-block";
     els.nextBtn.textContent = isLast ? "" : ("다음 노선 타기 — " + CAMPAIGN_WORLDS[state.world][state.lineIndex+1].name);
     els.restartBtn.textContent = isLast ? "처음부터 다시 (게임 클리어!)" : "처음부터 다시";
+    if(els.adReviveBtn) els.adReviveBtn.style.display = "none";
+    if(isLast) bumpStat("campaignClears");
     els.summaryScreen.classList.remove("hidden");
   }
   function endEndless(){
     clearTimers();
     var modeKey = state.mode;
+    if(modeKey === "speed") maxStat("speedBestRound", state.endless.roundNum);
     var improved = updateBest(modeKey, state.score, state.bestCombo);
     els.summaryTitle.textContent = (modeKey === "speed" ? "스피드 모드 종료!" : "마지막 자리 종료!") + (improved ? " 🎉" : "");
     els.summarySubLine.textContent = improved ? "신기록 달성!" : "SEAT HUNTER RESULT";
@@ -1171,6 +1465,10 @@
     els.summaryCombo.textContent = "최고 콤보 " + state.bestCombo + "연속";
     els.nextBtn.style.display = "none";
     els.restartBtn.textContent = "다시 도전";
+    if(els.adReviveBtn){
+      var canRevive = (modeKey === "speed" || modeKey === "duel") && !state.adReviveUsed;
+      els.adReviveBtn.style.display = canRevive ? "block" : "none";
+    }
     els.summaryScreen.classList.remove("hidden");
   }
 
@@ -1182,9 +1480,15 @@
   function startEndless(mode){
     state.mode = mode;
     state.score = 0; state.combo = 0; state.bestCombo = 0; state.stationIndex = 0;
+    state.adReviveUsed = false;
     state.endless = { roundNum:0, deadline: mode==="lastseat" ? Date.now()+75000 : 0 };
     state.syntheticLine = syntheticLine(mode, 0);
     startStation();
+  }
+  function showAdPlaceholder(cb){
+    els.adModal.classList.remove("hidden");
+    els.adModalText.textContent = "잠시만 기다려주세요";
+    after(2200, function(){ els.adModal.classList.add("hidden"); cb(); });
   }
   function goNextLine(){ els.summaryScreen.classList.add("hidden"); state.lineIndex += 1; state.stationIndex = 0; startStation(); }
   function restartGame(){
@@ -1232,6 +1536,31 @@
   }
 
   /* ============ START SCREEN: MODE TABS, WORLD, SETTINGS, DEX, DEV ============ */
+  var UI_STRINGS = {
+    ko: { tagline:"지하철 문이 열리기 전, 누가 내릴지<br>먼저 알아채는 사람이 자리를 가진다.",
+          rule1:"승객들을 관찰하고, 아래 버튼으로 곧 내릴 것 같은 사람을 고르세요.",
+          rule2:"신호가 뜨면 표정이 놀란 얼굴로 바뀝니다 — 진짜는 딱 1번뿐이에요.",
+          rule3:"가끔 라이벌이 같은 자리를 노려요 — 먼저 골라야 자리를 지킵니다.",
+          startBtn:"승차하기", selectorLabel:"곧 내릴 것 같은 사람을 고르세요" },
+    ja: { tagline:"電車のドアが開く前に、誰が降りるか<br>最初に気づいた人が席を手に入れる。",
+          rule1:"乗客を観察して、下のボタンで降りそうな人を選んでください。",
+          rule2:"サインが出ると驚いた表情に変わります — 本物は1回だけです。",
+          rule3:"たまにライバルが同じ席を狙います — 先に選ばないと取られます。",
+          startBtn:"乗車する", selectorLabel:"降りそうな人を選んでください" },
+    en: { tagline:"Before the doors open, whoever notices<br>who's about to leave gets the seat.",
+          rule1:"Watch the passengers and tap the button for who you think will get off.",
+          rule2:"A signal makes their face look startled — the real one only signals once.",
+          rule3:"Sometimes a rival is watching too — call it first or lose the seat.",
+          startBtn:"Board the train", selectorLabel:"Pick who's about to get off" }
+  };
+  function applyUILanguage(lang){
+    var s = UI_STRINGS[lang] || UI_STRINGS.ko;
+    if(state.mode === "campaign"){ els.modeTagline.innerHTML = s.tagline; }
+    els.ruleText1.textContent = s.rule1;
+    els.ruleText2.textContent = s.rule2;
+    els.ruleText3.textContent = s.rule3;
+    els.startBtn.textContent = s.startBtn;
+  }
   var MODE_INFO = {
     campaign: { key:"campaign", tagline:"지하철 문이 열리기 전, 누가 내릴지<br>먼저 알아채는 사람이 자리를 가진다." },
     speed:    { key:"speed", tagline:"제한 시간이 점점 짧아진다.<br>한 번이라도 놓치면 그대로 하차 — 얼마나 버틸 수 있을까?" },
@@ -1240,7 +1569,15 @@
   };
   function refreshStartScreen(){
     var info = MODE_INFO[state.mode];
-    els.modeTagline.innerHTML = info.tagline;
+    var lang = "ko";
+    if(state.mode === "campaign"){
+      var worldEntry = CAMPAIGN_WORLDS[state.world] && CAMPAIGN_WORLDS[state.world][0];
+      lang = langOf(worldEntry);
+      applyUILanguage(lang);
+    } else {
+      els.modeTagline.innerHTML = info.tagline;
+      applyUILanguage("ko");
+    }
     var best = getBest(info.key);
     els.bestRecord.textContent = best.score > 0 ? ("지난 최고 기록 · 점수 " + best.score + " · 콤보 " + best.combo + "연속") : "아직 기록이 없어요";
     if(els.worldRow) els.worldRow.style.display = state.mode === "campaign" ? "flex" : "none";
@@ -1258,11 +1595,30 @@
       document.querySelectorAll(".world-pill").forEach(function(x){ x.classList.remove("selected"); });
       p.classList.add("selected");
       state.world = p.getAttribute("data-world");
+      refreshStartScreen();
     });
   });
   refreshStartScreen();
 
   /* ---- settings modal ---- */
+  function renderThemeRow(){
+    els.themeRow.innerHTML = "";
+    Object.keys(THEMES).forEach(function(key){
+      var t = THEMES[key];
+      var unlocked = (stats.lifetimeScore||0) >= t.unlock;
+      var btn = document.createElement("button");
+      btn.className = "scale-btn" + (settings.theme === key ? " selected" : "");
+      btn.textContent = unlocked ? t.name : ("🔒 " + t.name);
+      if(unlocked){
+        btn.addEventListener("click", function(){
+          settings.theme = key; saveSettings(); applyTheme(key); renderThemeRow();
+        });
+      } else {
+        btn.disabled = true; btn.style.opacity = ".5";
+      }
+      els.themeRow.appendChild(btn);
+    });
+  }
   function applySettingsToUI(){
     var stageEl = document.getElementById("stage");
     stageEl.classList.toggle("ui-scale-lg", settings.textScale === "large");
@@ -1270,14 +1626,23 @@
     els.soundToggle.classList.toggle("on", settings.sound);
     els.vibrateToggle.classList.toggle("on", settings.vibrate);
     els.colorblindToggle.classList.toggle("on", settings.colorblind);
-    document.querySelectorAll(".scale-btn").forEach(function(b){
+    els.captionsToggle.classList.toggle("on", settings.captions);
+    els.bgmSlider.value = Math.round((settings.bgmVolume||0) * 100);
+    document.querySelectorAll(".scale-btn[data-scale]").forEach(function(b){
       b.classList.toggle("selected", b.getAttribute("data-scale") === settings.textScale);
     });
+    renderThemeRow();
+    applyTheme(settings.theme || "default");
   }
-  els.soundToggle.addEventListener("click", function(){ settings.sound = !settings.sound; saveSettings(); applySettingsToUI(); });
+  els.soundToggle.addEventListener("click", function(){
+    settings.sound = !settings.sound; saveSettings(); applySettingsToUI();
+    if(!settings.sound) stopBGM(); else if(state.roundActive || state.mode) startBGM();
+  });
   els.vibrateToggle.addEventListener("click", function(){ settings.vibrate = !settings.vibrate; saveSettings(); applySettingsToUI(); });
   els.colorblindToggle.addEventListener("click", function(){ settings.colorblind = !settings.colorblind; saveSettings(); applySettingsToUI(); });
-  document.querySelectorAll(".scale-btn").forEach(function(b){
+  els.captionsToggle.addEventListener("click", function(){ settings.captions = !settings.captions; saveSettings(); applySettingsToUI(); });
+  els.bgmSlider.addEventListener("input", function(){ setBGMVolume(els.bgmSlider.value/100); });
+  document.querySelectorAll(".scale-btn[data-scale]").forEach(function(b){
     b.addEventListener("click", function(){ settings.textScale = b.getAttribute("data-scale"); saveSettings(); applySettingsToUI(); });
   });
   els.settingsBtn.addEventListener("click", function(){ applySettingsToUI(); els.settingsModal.classList.remove("hidden"); });
@@ -1298,18 +1663,62 @@
   els.collectionBtn.addEventListener("click", function(){ renderCollection(); els.collectionModal.classList.remove("hidden"); });
   els.collectionModalClose.addEventListener("click", function(){ els.collectionModal.classList.add("hidden"); });
 
+  /* ---- achievements modal ---- */
+  function renderAchievementsGrid(){
+    var html = ACHIEVEMENTS.map(function(a){
+      var done = !!unlockedAch[a.id];
+      return '<div class="dex-item'+(done?"":" locked")+'">'+
+        '<div class="dex-icon">'+(done ? "🏆" : "🔒")+'</div>'+
+        '<div class="dex-name">'+(done ? a.name : "???")+'</div>'+
+        '<div class="dex-count">'+(done ? a.desc : "미달성")+'</div></div>';
+    }).join("");
+    els.achGrid.innerHTML = html;
+  }
+  els.achievementsBtn.addEventListener("click", function(){ renderAchievementsGrid(); els.achievementsModal.classList.remove("hidden"); });
+  els.achievementsModalClose.addEventListener("click", function(){ els.achievementsModal.classList.add("hidden"); });
+
   /* ---- developer modal ---- */
   els.devBtn.addEventListener("click", function(){ els.devModal.classList.remove("hidden"); });
   els.devModalClose.addEventListener("click", function(){ els.devModal.classList.add("hidden"); });
 
+  /* ---- accessibility captions for sound cues ---- */
+  function a11yCaption(text){
+    if(!settings.captions || !els.a11yCaption) return;
+    els.a11yCaption.textContent = text;
+    els.a11yCaption.classList.add("show");
+    after(1100, function(){ els.a11yCaption.classList.remove("show"); });
+  }
+
+  /* ---- opening intro sequence ---- */
+  function playIntro(cb){
+    els.introOverlay.classList.remove("hidden");
+    var done = false;
+    function finish(){ if(done) return; done = true; els.introOverlay.classList.add("hidden"); cb(); }
+    els.introOverlay.onclick = finish;
+    after(1500, finish);
+  }
+
   els.startBtn.addEventListener("click", function(){
     ensureAudio();
+    startBGM();
     els.startScreen.classList.add("hidden");
-    if(state.mode === "campaign"){ startCampaign(); } else { startEndless(state.mode); }
+    playIntro(function(){
+      if(state.mode === "campaign"){ startCampaign(); } else { startEndless(state.mode); }
+    });
   });
   els.nextBtn.addEventListener("click", goNextLine);
   els.restartBtn.addEventListener("click", restartGame);
   els.shareBtn.addEventListener("click", generateShareCard);
+  els.adReviveBtn.addEventListener("click", function(){
+    state.adReviveUsed = true;
+    els.summaryScreen.classList.add("hidden");
+    showAdPlaceholder(function(){
+      state.lastRoundFailed = false;
+      state.endless.roundNum += 1;
+      state.syntheticLine = syntheticLine(state.mode, state.endless.roundNum);
+      startStation();
+    });
+  });
 
   renderHUD();
 })();
