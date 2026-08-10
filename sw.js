@@ -1,5 +1,7 @@
-const CACHE_NAME = "seat-hunter-v1";
-const ASSETS = [
+// Network-first: always fetch the latest files when online, and only fall back
+// to the cache when the network is unavailable (offline support).
+const CACHE_NAME = "seat-hunter-v2";
+const OFFLINE_ASSETS = [
   "./",
   "./index.html",
   "./manifest.json",
@@ -8,10 +10,10 @@ const ASSETS = [
 ];
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS)).catch(() => {})
-  );
   self.skipWaiting();
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(OFFLINE_ASSETS)).catch(() => {})
+  );
 });
 
 self.addEventListener("activate", (event) => {
@@ -25,18 +27,18 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
+
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      if (cached) return cached;
-      return fetch(event.request)
-        .then((res) => {
-          if (res && res.status === 200 && res.type === "basic") {
-            const clone = res.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
-          }
-          return res;
-        })
-        .catch(() => caches.match("./index.html"));
-    })
+    fetch(event.request, { cache: "no-store" })
+      .then((res) => {
+        if (res && res.status === 200) {
+          const clone = res.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+        }
+        return res;
+      })
+      .catch(() =>
+        caches.match(event.request).then((cached) => cached || caches.match("./index.html"))
+      )
   );
 });
