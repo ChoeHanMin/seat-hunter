@@ -794,6 +794,7 @@
       case "seasonPumpkinStem": return "#2e7d32";
       case "seasonSanta": return "#c1272d";
       case "seasonSantaPom": return "#ffffff";
+      case "wrinkle": return "rgba(60,40,25,0.35)";
       default: return "#888";
     }
   }
@@ -810,19 +811,25 @@
     R(10,1,24,3,"hair"), R(6,4,32,5,"hair"), R(4,9,36,6,"hair"),
     R(14,2,7,2,"hairLight"), R(9,10,6,2,"hairLight")
   ];
-  // shared face skin
+  // shared face skin — extra taper steps for a smoother jawline
   var FACE_SKIN = [
-    R(14,13,16,4,"skin"), R(12,17,20,17,"skin"), R(15,34,14,4,"skin"), R(18,38,8,3,"skin"), R(18,40,8,6,"skin")
+    R(14,13,16,4,"skin"),
+    R(12,17,20,13,"skin"),
+    R(13,30,18,3,"skin"),
+    R(15,33,14,3,"skin"),
+    R(17,36,10,2,"skin"),
+    R(18,38,8,3,"skin"),
+    R(18,41,8,5,"skin")
   ];
-  // hair side locks (drawn after face so they frame it)
-  var HAIR_SIDES = [ R(4,13,10,21,"hair"), R(30,13,10,21,"hair") ];
+  // hair side locks (drawn after face so they frame it) — long vs short styles
+  var HAIR_SIDES_LONG  = [ R(4,13,10,21,"hair"), R(30,13,10,21,"hair") ];
+  var HAIR_SIDES_SHORT = [ R(5,13,7,9,"hair"), R(32,13,7,9,"hair") ];
   var HAIR_STRANDS = [ R(3,32,3,11,"hair"), R(7,35,2,13,"hairLight"), R(34,32,3,11,"hair"), R(39,35,2,11,"hairLight") ];
-  // shared torso
+  // shared torso (sleeves stop right at the wrist — hands are drawn per-archetype in TAILS so they always connect)
   var TORSO = [
     R(16,46,12,3,"shirtDark"), R(4,49,36,4,"shirt"),
-    R(4,53,6,24,"shirt"), R(34,53,6,24,"shirt"),
-    R(7,52,3,27,"shirtDark"), R(10,53,24,30,"shirt"),
-    R(4,74,7,7,"skin"), R(33,74,7,7,"skin")
+    R(4,53,6,21,"shirt"), R(34,53,6,21,"shirt"),
+    R(7,52,3,22,"shirtDark"), R(10,53,24,22,"shirt")
   ];
   // legs + shoes (seated: thighs forward to knees, shins down to shoes on the floor)
   function legColor(colors){ return colors.shirtDark; }
@@ -841,6 +848,12 @@
   }
   var EYES = eyeRects(15).concat(eyeRects(24));
   var BLUSH = [ R(13,29,3,2,"blush"), R(28,29,3,2,"blush") ];
+  var GLASSES = [
+    R(14,21,7,1,"dark"), R(14,26,7,1,"dark"), R(14,22,1,4,"dark"), R(20,22,1,4,"dark"),
+    R(23,21,7,1,"dark"), R(23,26,7,1,"dark"), R(23,22,1,4,"dark"), R(29,22,1,4,"dark"),
+    R(21,23,2,1,"dark")
+  ];
+  var WRINKLES = [ R(11,29,3,1,"wrinkle"), R(26,29,3,1,"wrinkle"), R(13,18,3,1,"wrinkle") ];
 
   var FACES = {
     sleep:  [ R(15,19,6,1,"dark"), R(23,19,6,1,"dark"),
@@ -863,37 +876,41 @@
     .concat(eyeRects(23).map(function(o){return R(o.x+1,o.y-2,o.w+2,o.h+2,o.fill,o.cls);}))
     .concat([ R(17,33,10,4,"dark") ]);
 
+  // TAILS: props + hands, always positioned so the hand connects right at the sleeve cuff (y=74)
   var TAILS = {
-    sleep:  [],
-    drunk:  [ R(13,29,4,3,"blush"), R(27,29,4,3,"blush") ],
-    phone:  [ R(15,79,14,15,"phoneBody"), R(18,82,8,9,"phoneGlow","glow-blink"), R(11,83,5,7,"skin"), R(28,83,5,7,"skin") ],
-    bag:    [ R(10,80,20,14,"prop1"), R(17,85,6,3,"dark"), R(8,80,7,9,"skin","dig-hand") ],
-    map:    [ R(7,74,30,16,"paper","map-flutter"), R(11,79,22,2,"line"), R(11,84,22,2,"line"), R(4,78,6,9,"skin"), R(34,78,6,9,"skin") ],
-    earbud: [ R(1,23,3,3,"white","glow-blink") ],
-    book:   [ R(7,80,30,13,"prop1"), R(20,80,2,13,"dark"), R(10,82,9,9,"white"), R(25,82,9,9,"white","page-flip"), R(4,83,5,7,"skin"), R(35,83,5,7,"skin") ]
+    sleep:  [ R(3,74,8,8,"skin"), R(33,74,8,8,"skin") ],
+    drunk:  [ R(3,74,8,8,"skin"), R(33,74,8,8,"skin"), R(13,29,4,3,"blush"), R(27,29,4,3,"blush") ],
+    phone:  [ R(15,74,14,15,"phoneBody"), R(18,77,8,9,"phoneGlow","glow-blink"), R(10,74,6,10,"skin"), R(29,74,6,10,"skin") ],
+    bag:    [ R(10,75,20,14,"prop1"), R(17,80,6,3,"dark"), R(6,74,8,10,"skin","dig-hand"), R(33,74,7,9,"skin") ],
+    map:    [ R(7,70,30,16,"paper","map-flutter"), R(11,75,22,2,"line"), R(11,80,22,2,"line"), R(2,74,7,10,"skin"), R(35,74,7,10,"skin") ],
+    earbud: [ R(1,23,3,3,"white","glow-blink"), R(3,74,8,8,"skin"), R(33,74,8,8,"skin") ],
+    book:   [ R(7,76,30,13,"prop1"), R(20,76,2,13,"dark"), R(10,78,9,9,"white"), R(25,78,9,9,"white","page-flip"), R(2,74,7,10,"skin"), R(35,74,7,10,"skin") ]
   };
   var ARCH_TAG = { sleep:"수면중", drunk:"취기중", phone:"폰 삼매경", bag:"가방 정리", map:"노선도 확인", earbud:"이어폰", book:"독서중" };
 
   /* ---- body-type diversity: layered on top of behavior archetype ---- */
-  var BODY_TYPES = ["adult","adult","adult","adult","teen","elderly","pregnant","adult_baby"];
+  var BODY_TYPES = ["adult","adult","adult","teen","elderly","pregnant","adult_baby","middle_aged"];
   var GREY_HAIR_PAIRS = [ {base:"#8a8a8a",light:"#b5b5b5"}, {base:"#c9c9c9",light:"#e5e5e5"} ];
   function bodyExtraRects(bodyType){
     var R = function(x,y,w,h,c){ return {x:x,y:y,w:w,h:h,fill:c,cls:""}; };
     if(bodyType === "pregnant") return [ R(9,68,26,16,"shirt"), R(11,84,22,4,"shirtDark") ];
-    if(bodyType === "elderly")  return [ R(38,98,2,38,"dark"), R(36,96,6,3,"dark") ];
+    if(bodyType === "elderly")  return [ R(38,98,2,38,"dark"), R(36,96,6,3,"dark") ].concat(WRINKLES);
+    if(bodyType === "middle_aged") return WRINKLES.slice(0,2);
     if(bodyType === "teen")     return [ R(1,50,3,22,"prop1"), R(40,50,3,22,"prop1") ];
     if(bodyType === "adult_baby") return [
-      R(15,96,8,14,"babyBlanket"), R(12,88,14,3,"babyHair"), R(14,90,10,10,"babySkin")
+      R(12,70,14,3,"babyHair"), R(14,72,10,10,"babySkin"), R(15,78,8,11,"babyBlanket")
     ];
     return [];
   }
 
-  function spriteSVG(archetype, colors, lineColor, fidget, bodyType, season){
+  function spriteSVG(archetype, colors, lineColor, fidget, bodyType, season, hairStyle, hasGlasses){
     bodyType = bodyType || "adult";
+    hairStyle = hairStyle || "long";
     var hairBackSVG = rectsToSVG(HAIR_BACK, colors, lineColor);
     var faceSkinSVG = rectsToSVG(FACE_SKIN, colors, lineColor);
-    var hairSideSVG = rectsToSVG(HAIR_SIDES.concat(HAIR_STRANDS), colors, lineColor);
-    var faceLayer = rectsToSVG(FACES[archetype], colors, lineColor);
+    var hairSideBase = hairStyle === "short" ? HAIR_SIDES_SHORT : HAIR_SIDES_LONG;
+    var hairSideSVG = rectsToSVG(hairStyle === "short" ? hairSideBase : hairSideBase.concat(HAIR_STRANDS), colors, lineColor);
+    var faceLayer = rectsToSVG(FACES[archetype].concat(hasGlasses ? GLASSES : []), colors, lineColor);
     var alertLayer = rectsToSVG(FACE_ALERT, colors, lineColor);
     var legsSVG = rectsToSVG(LEGS, colors, lineColor);
     var bodyExtraSVG = rectsToSVG(bodyExtraRects(bodyType), colors, lineColor);
@@ -1037,11 +1054,16 @@
     var list = pool.map(function(arch){
       var bt = pick(BODY_TYPES);
       var colors = randomColors(arch);
-      if(bt === "elderly"){
+      if(bt === "elderly" && Math.random() < 0.7){
         var gp = pick(GREY_HAIR_PAIRS);
         colors.hair = gp.base; colors.hairLight = gp.light;
       }
-      return { archetype:arch, colors:colors, bodyType:bt, season: (currentSeason() && Math.random() < 0.25) ? currentSeason() : null };
+      return {
+        archetype:arch, colors:colors, bodyType:bt,
+        season: (currentSeason() && Math.random() < 0.25) ? currentSeason() : null,
+        hairStyle: Math.random() < 0.5 ? "short" : "long",
+        hasGlasses: Math.random() < 0.22
+      };
     });
 
     var leaverIdx = Math.floor(Math.random()*n);
@@ -1088,7 +1110,7 @@
 
       var wrap = document.createElement("div");
       wrap.className = "sprite-wrap"; wrap.id = "sprite-"+idx;
-      wrap.innerHTML = spriteSVG(p.archetype, p.colors, line.color, Math.random()<0.25, p.bodyType, p.season);
+      wrap.innerHTML = spriteSVG(p.archetype, p.colors, line.color, Math.random()<0.25, p.bodyType, p.season, p.hairStyle, p.hasGlasses);
 
       var cushion = document.createElement("div"); cushion.className = "seat-cushion";
 
