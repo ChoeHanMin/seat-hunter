@@ -156,7 +156,7 @@
   .mode-tab.selected{ border-color:var(--signage-amber); color:var(--signage-amber); background:#3a2f14; }
   .best-record{ font-size:11.5px; color:var(--steel-400); margin-bottom:16px; }
 
-  .icon-btn-row{ display:flex; gap:8px; margin-bottom:14px; }
+  .icon-btn-row{ display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap; justify-content:center; }
   .icon-btn{ background:var(--car-750); border:1px solid #3a4459; color:var(--steel-300); border-radius:8px;
     padding:6px 10px; font-size:11px; cursor:pointer; font-family:'Noto Sans KR', sans-serif; }
 
@@ -399,6 +399,7 @@
     <h1 class="game-title">자리 사냥</h1>
     <div class="game-subtitle">SEAT HUNTER</div>
     <div class="icon-btn-row">
+      <button class="icon-btn" id="langBtn">🌐 언어 (Language)</button>
       <button class="icon-btn" id="settingsBtn">⚙️ 설정</button>
       <button class="icon-btn" id="collectionBtn">📖 도감</button>
       <button class="icon-btn" id="achievementsBtn">🏆 업적</button>
@@ -619,7 +620,7 @@
   /* ============ SETTINGS ============ */
   var SETTINGS_KEY = "seatHunterSettings_v1";
   function loadSettings(){
-    var def = {sound:true, vibrate:true, textScale:"normal", colorblind:false, bgmVolume:0.5, captions:false, theme:"default", uiLang:"auto"};
+    var def = {sound:true, vibrate:true, textScale:"normal", colorblind:false, bgmVolume:0.5, captions:false, theme:"default", uiLang:"ko"};
     try{ var raw = localStorage.getItem(SETTINGS_KEY); return raw ? Object.assign(def, JSON.parse(raw)) : def; }catch(e){ return def; }
   }
   var settings = loadSettings();
@@ -648,16 +649,16 @@
   var unlockedAch = loadAchievements();
 
   var ACHIEVEMENTS = [
-    { id:"firstWin",   name:"첫 적중",       desc:"첫 성공 예측",              statKey:"totalHits", goal:1 },
-    { id:"combo20",    name:"콤보 마스터",   desc:"콤보 20 달성",              check:function(){ return state.bestCombo >= 20; } },
-    { id:"rival5",     name:"라이벌 킬러",   desc:"라이벌 이기기 5회",         statKey:"rivalWins", goal:5 },
-    { id:"villain10",  name:"빌런 헌터",     desc:"빌런 10번 쫓아내기",        statKey:"villainWins", goal:10 },
-    { id:"campaignClear", name:"완주자",     desc:"캠페인 노선 완주",          statKey:"campaignClears", goal:1 },
-    { id:"speed10",    name:"생존왕",        desc:"스피드 모드 10라운드 생존", statKey:"speedBestRound", goal:10 },
-    { id:"dexFull",    name:"승객 도감 마스터", desc:"승객 7종 전부 목격",     check:function(){ return Object.keys(collection).length >= 7; } },
-    { id:"confident10", name:"확신러",       desc:"확신 베팅 성공 10회",       statKey:"confidentWins", goal:10 },
-    { id:"event10",    name:"배려왕",        desc:"특별 이벤트 10회 처리",     statKey:"eventsHandled", goal:10 },
-    { id:"score5000",  name:"눈치 고수",     desc:"누적 점수 5000 달성",       statKey:"lifetimeScore", goal:5000 }
+    { id:"firstWin",   name:"첫 적중",       nameEn:"First Hit",        desc:"첫 성공 예측",              descEn:"Your first correct prediction",       statKey:"totalHits", goal:1 },
+    { id:"combo20",    name:"콤보 마스터",   nameEn:"Combo Master",     desc:"콤보 20 달성",              descEn:"Reach a 20 combo",                    check:function(){ return state.bestCombo >= 20; } },
+    { id:"rival5",     name:"라이벌 킬러",   nameEn:"Rival Killer",     desc:"라이벌 이기기 5회",         descEn:"Beat the rival 5 times",              statKey:"rivalWins", goal:5 },
+    { id:"villain10",  name:"빌런 헌터",     nameEn:"Villain Hunter",   desc:"빌런 10번 쫓아내기",        descEn:"Chase off 10 villains",               statKey:"villainWins", goal:10 },
+    { id:"campaignClear", name:"완주자",     nameEn:"Finisher",         desc:"캠페인 노선 완주",          descEn:"Clear a campaign line",               statKey:"campaignClears", goal:1 },
+    { id:"speed10",    name:"생존왕",        nameEn:"Survivor",         desc:"스피드 모드 10라운드 생존", descEn:"Survive 10 rounds in Speed mode",     statKey:"speedBestRound", goal:10 },
+    { id:"dexFull",    name:"승객 도감 마스터", nameEn:"Dex Master",    desc:"승객 7종 전부 목격",       descEn:"Spot all 7 passenger types",          check:function(){ return Object.keys(collection).length >= 7; } },
+    { id:"confident10", name:"확신러",       nameEn:"Confident Caller", desc:"확신 베팅 성공 10회",       descEn:"Win 10 confident bets",               statKey:"confidentWins", goal:10 },
+    { id:"event10",    name:"배려왕",        nameEn:"Kind Rider",       desc:"특별 이벤트 10회 처리",     descEn:"Handle 10 special events",            statKey:"eventsHandled", goal:10 },
+    { id:"score5000",  name:"눈치 고수",     nameEn:"Sixth Sense Pro",  desc:"누적 점수 5000 달성",       descEn:"Reach 5000 lifetime score",           statKey:"lifetimeScore", goal:5000 }
   ];
   function checkAchievements(){
     ACHIEVEMENTS.forEach(function(a){
@@ -666,7 +667,7 @@
       if(done){ unlockedAch[a.id] = true; saveAchievements(); showAchievementToast(a); }
     });
   }
-  function showAchievementToast(a){ showCaption("🏆 " + a.name); sfxCombo(); }
+  function showAchievementToast(a){ showCaption("🏆 " + (settings.uiLang === "en" ? a.nameEn : a.name)); sfxCombo(); }
 
   /* ============ CAR THEMES ============ */
   var THEMES = {
@@ -944,7 +945,7 @@
    "captionText","timerFill","resultBanner","resultText","resultSub","nextStopBanner","nextStopText","doorFlash","bench","selectorRow","strapsRow","routeStrip",
    "bottomHint","startScreen","summaryScreen","startBtn","nextBtn","restartBtn","shareBtn","modeTagline","bestRecord","tutorialHint",
    "adReviveBtn","adModal","adModalText",
-   "worldRow","settingsBtn","collectionBtn","devBtn","settingsModal","settingsModalClose","soundToggle","vibrateToggle","colorblindToggle",
+   "worldRow","langBtn","settingsBtn","collectionBtn","devBtn","settingsModal","settingsModalClose","soundToggle","vibrateToggle","colorblindToggle",
    "collectionModal","collectionModalClose","dexGrid","devModal","devModalClose",
    "achievementsBtn","achievementsModal","achievementsModalClose","achGrid",
    "captionsToggle","bgmSlider","themeRow","introOverlay","a11yCaption",
@@ -1038,9 +1039,9 @@
     els.captionText.classList.remove("show"); void els.captionText.offsetWidth; els.captionText.classList.add("show");
   }
   function comboCaption(n){
-    if(n >= 10) return "지하철 눈치왕!";
-    if(n >= 5) return "PERFECT READ!";
-    if(n >= 1) return n + " COMBO";
+    if(n >= 10) return T("comboKing");
+    if(n >= 5) return T("comboPerfect");
+    if(n >= 1) return T("comboN", n);
     return null;
   }
 
@@ -1119,7 +1120,7 @@
 
       var btn = document.createElement("div");
       btn.className = "seat-btn"; btn.id = "btn-"+idx;
-      btn.innerHTML = '<span class="btn-num">'+(idx+1)+'</span><span class="btn-tag">'+ARCH_TAG[p.archetype]+'</span>';
+      btn.innerHTML = '<span class="btn-num">'+(idx+1)+'</span><span class="btn-tag">'+archTag(p.archetype)+'</span>';
       els.selectorRow.appendChild(btn);
       attachPointerHandlers(btn, idx);
     });
@@ -1185,7 +1186,7 @@
     els.lineBadge.style.background = line.color;
     els.ledStation.textContent = ANNOUNCE[lang].next(stationName);
     els.ledSub.textContent = ANNOUNCE[lang].door(doorSide);
-    if(els.selectorLabel) els.selectorLabel.textContent = (UI_STRINGS[lang] || UI_STRINGS.ko).selectorLabel;
+    if(els.selectorLabel) els.selectorLabel.textContent = T("selectorLabel");
     els.resultBanner.classList.remove("show","success","fail");
     if(els.tutorialHint) els.tutorialHint.classList.remove("show");
     renderStationProgress();
@@ -1255,7 +1256,7 @@
         var gained = 100 * bonus + state.combo * 10;
         state.score += gained; state.combo += 1; state.bestCombo = Math.max(state.bestCombo, state.combo);
         renderHUD();
-        showResult("success", "촉 적중! +" + gained + (state.confident ? " (확신 ×2)" : ""), "정확히 예측했습니다");
+        showResult("success", T("hitResult", gained, state.confident), T("hitSub"));
         sfxSuccess(); vib(50);
         var cap = comboCaption(state.combo);
         if(cap) after(150, function(){ showCaption(cap); if(state.combo>=5) sfxCombo(); });
@@ -1266,8 +1267,8 @@
       } else {
         if(picked !== -1){ document.getElementById("seat-"+picked).classList.add("wrong-pick"); }
         state.combo = 0; renderHUD();
-        var msg = rivalStole ? "라이벌이 채갔다!" : (picked === -1 ? "못 골랐다..." : "자리 뺏김!");
-        var sub = rivalStole ? "정답은 맞았지만 한 발 늦었어요" : (picked === -1 ? "선택 시간이 지났습니다" : "정답은 "+(leaver+1)+"번이었어요");
+        var msg = rivalStole ? T("rivalSteal") : (picked === -1 ? T("missNone") : T("missWrong"));
+        var sub = rivalStole ? T("rivalStealSub") : (picked === -1 ? T("missNoneSub") : T("missWrongSub", leaver+1));
         showResult("fail", msg, sub);
         sfxFail(); vib([30,50,30]);
         state.lastRoundFailed = true;
@@ -1324,10 +1325,10 @@
         text = ANNOUNCE[lang].terminus;
       }
     } else if(state.mode === "speed" || state.mode === "duel"){
-      text = state.lastRoundFailed ? "하차합니다. 수고하셨습니다." : "다음 구간으로 이동합니다.";
+      text = state.lastRoundFailed ? T("departing") : T("nextSegment");
     } else {
       var remain = Math.max(0, Math.round((state.endless.deadline - Date.now())/1000));
-      text = remain > 0 ? ("다음 구간으로 이동합니다 · 남은 시간 " + remain + "초") : "운행이 종료됩니다.";
+      text = remain > 0 ? T("nextSegmentTimer", remain) : T("serviceEnd");
     }
     els.nextStopText.textContent = text;
     els.nextStopBanner.classList.add("show");
@@ -1379,9 +1380,12 @@
   function showSpecialEvent(proceedFn){
     var kind = Math.random() < 0.5 ? "pregnant" : "elderly";
     var icon = kind === "pregnant" ? "🤰" : "👴";
-    var text = kind === "pregnant" ? "임산부가 탑승했습니다." : "거동이 불편한 어르신이 탑승했습니다.";
+    var text = kind === "pregnant" ? T("eventPregnant") : T("eventElderly");
     els.eventIcon.textContent = icon;
     els.eventText.textContent = text;
+    els.specialEventModal.querySelector("h3").textContent = T("eventTitle");
+    els.eventYieldBtn.textContent = T("yieldSeat");
+    els.eventIgnoreBtn.textContent = T("ignoreSeat");
     els.specialEventModal.classList.remove("hidden");
     var resolved = false;
     function resolve(yielded){
@@ -1389,12 +1393,12 @@
       els.specialEventModal.classList.add("hidden");
       if(yielded){
         state.score += 50; renderHUD();
-        showResult("success", "자리를 양보했습니다 +50", "훈훈한 지하철");
+        showResult("success", T("yieldedResult"), T("yieldedSub"));
         sfxSuccess(); vib(50);
         bumpStat("lifetimeScore", 50);
       } else {
         state.combo = 0; renderHUD();
-        showResult("fail", "못 본 척했다...", "콤보가 초기화됐어요");
+        showResult("fail", T("ignoredResult"), T("ignoredSub"));
         sfxFail();
       }
       bumpStat("eventsHandled");
@@ -1414,8 +1418,8 @@
     els.villainSprite.classList.remove("villain-spread","villain-lying","tap-shake");
     els.villainSprite.classList.add(kind === "lying" ? "villain-lying" : "villain-spread");
     els.villainCard.classList.remove("fleeing");
-    els.villainTitle.textContent = kind === "lying" ? "완전히 드러누웠다!" : "다리를 쫙 벌리고 두 자리를 차지했다!";
-    els.villainHint.textContent = "빠르게 탭해서 부끄럽게 만드세요!";
+    els.villainTitle.textContent = kind === "lying" ? T("villainLying") : T("villainSpread");
+    els.villainHint.textContent = T("villainTapHint");
 
     var taps = 0, need = 4, done = false;
     els.villainTapCount.textContent = taps + " / " + need;
@@ -1428,12 +1432,12 @@
       if(success){
         els.villainCard.classList.add("fleeing");
         state.score += 80; renderHUD();
-        showResult("success", "빌런 도망감! +80", "덕분에 자리가 넓어졌어요");
+        showResult("success", T("villainWin"), T("villainWinSub"));
         sfxSuccess(); vib(50);
         bumpStat("villainWins"); bumpStat("lifetimeScore", 80);
         after(650, function(){ els.villainModal.classList.add("hidden"); proceedFn(); });
       } else {
-        showResult("fail", "결국 못 쫓아냈다...", "다음 역까지 계속 저러고 있었다");
+        showResult("fail", T("villainLose"), T("villainLoseSub"));
         sfxFail();
         after(500, function(){ els.villainModal.classList.add("hidden"); proceedFn(); });
       }
@@ -1459,17 +1463,18 @@
     clearTimers();
     var line = currentLine();
     var improved = updateBest("campaign", state.score, state.bestCombo);
-    els.summaryTitle.textContent = line.name + " 완주!" + (improved ? " 🎉" : "");
-    els.summarySubLine.textContent = improved ? "신기록 달성!" : "SOODAL METRO · " + line.stations.length + " STATIONS";
+    els.summaryTitle.textContent = T("campaignClear", line.name) + (improved ? " 🎉" : "");
+    els.summarySubLine.textContent = improved ? T("newRecord") : "SOODAL METRO · " + line.stations.length + " STATIONS";
     els.summaryScore.textContent = String(state.score).padStart(4,"0");
     var pct = clamp(Math.round(100 - state.score/38), 1, 97);
-    els.summaryRank.textContent = "지하철 눈치력 상위 " + pct + "%";
+    els.summaryRank.textContent = T("rankPct", pct);
     els.summaryBadge.textContent = badgeFor(state.score);
-    els.summaryCombo.textContent = "최고 콤보 " + state.bestCombo + "연속";
+    els.summaryCombo.textContent = T("bestCombo", state.bestCombo);
     var isLast = state.lineIndex >= CAMPAIGN_WORLDS[state.world].length - 1;
     els.nextBtn.style.display = isLast ? "none" : "inline-block";
-    els.nextBtn.textContent = isLast ? "" : ("다음 노선 타기 — " + CAMPAIGN_WORLDS[state.world][state.lineIndex+1].name);
-    els.restartBtn.textContent = isLast ? "처음부터 다시 (게임 클리어!)" : "처음부터 다시";
+    els.nextBtn.textContent = isLast ? "" : T("nextLine", CAMPAIGN_WORLDS[state.world][state.lineIndex+1].name);
+    els.restartBtn.textContent = isLast ? T("restartClear") : T("restartAll");
+    els.shareBtn.textContent = T("saveShare");
     if(els.adReviveBtn) els.adReviveBtn.style.display = "none";
     if(isLast) bumpStat("campaignClears");
     els.summaryScreen.classList.remove("hidden");
@@ -1479,18 +1484,20 @@
     var modeKey = state.mode;
     if(modeKey === "speed") maxStat("speedBestRound", state.endless.roundNum);
     var improved = updateBest(modeKey, state.score, state.bestCombo);
-    els.summaryTitle.textContent = (modeKey === "speed" ? "스피드 모드 종료!" : "마지막 자리 종료!") + (improved ? " 🎉" : "");
-    els.summarySubLine.textContent = improved ? "신기록 달성!" : "SEAT HUNTER RESULT";
+    els.summaryTitle.textContent = (modeKey === "speed" ? T("speedEnd") : T("lastseatEnd")) + (improved ? " 🎉" : "");
+    els.summarySubLine.textContent = improved ? T("newRecord") : "SEAT HUNTER RESULT";
     els.summaryScore.textContent = String(state.score).padStart(4,"0");
     var pct = clamp(Math.round(100 - state.score/38), 1, 97);
-    els.summaryRank.textContent = "지하철 눈치력 상위 " + pct + "%";
+    els.summaryRank.textContent = T("rankPct", pct);
     els.summaryBadge.textContent = badgeFor(state.score);
-    els.summaryCombo.textContent = "최고 콤보 " + state.bestCombo + "연속";
+    els.summaryCombo.textContent = T("bestCombo", state.bestCombo);
     els.nextBtn.style.display = "none";
-    els.restartBtn.textContent = "다시 도전";
+    els.restartBtn.textContent = T("retry");
+    els.shareBtn.textContent = T("saveShare");
     if(els.adReviveBtn){
       var canRevive = (modeKey === "speed" || modeKey === "duel") && !state.adReviveUsed;
       els.adReviveBtn.style.display = canRevive ? "block" : "none";
+      els.adReviveBtn.textContent = T("adRevive");
     }
     els.summaryScreen.classList.remove("hidden");
   }
@@ -1510,7 +1517,8 @@
   }
   function showAdPlaceholder(cb){
     els.adModal.classList.remove("hidden");
-    els.adModalText.textContent = "잠시만 기다려주세요";
+    els.adModal.querySelector("h3").textContent = T("adPlaying");
+    els.adModalText.textContent = T("adWait");
     after(2200, function(){ els.adModal.classList.add("hidden"); cb(); });
   }
   function goNextLine(){ els.summaryScreen.classList.add("hidden"); state.lineIndex += 1; state.stationIndex = 0; startStation(); }
@@ -1576,35 +1584,178 @@
           rule3:"Sometimes a rival is watching too — call it first or lose the seat.",
           startBtn:"Board the train", selectorLabel:"Pick who's about to get off" }
   };
-  function applyUILanguage(lang){
-    var s = UI_STRINGS[lang] || UI_STRINGS.ko;
-    if(state.mode === "campaign"){ els.modeTagline.innerHTML = s.tagline; }
-    els.ruleText1.textContent = s.rule1;
-    els.ruleText2.textContent = s.rule2;
-    els.ruleText3.textContent = s.rule3;
-    els.startBtn.textContent = s.startBtn;
-  }
-  var MODE_INFO = {
-    campaign: { key:"campaign", tagline:"지하철 문이 열리기 전, 누가 내릴지<br>먼저 알아채는 사람이 자리를 가진다." },
-    speed:    { key:"speed", tagline:"제한 시간이 점점 짧아진다.<br>한 번이라도 놓치면 그대로 하차 — 얼마나 버틸 수 있을까?" },
-    lastseat: { key:"lastseat", tagline:"정해진 시간 동안, 최대한 많은 자리를<br>연달아 잡아보세요. 실수해도 게임은 계속됩니다." },
-    duel:     { key:"duel", tagline:"승객 단 2명. 누가 먼저 내릴지<br>순식간에 골라야 하는 초단타 밸런스 게임." }
-  };
-  function refreshStartScreen(){
-    var info = MODE_INFO[state.mode];
-    var lang = "ko";
-    if(state.mode === "campaign"){
-      var worldEntry = CAMPAIGN_WORLDS[state.world] && CAMPAIGN_WORLDS[state.world][0];
-      lang = langOf(worldEntry);
-      applyUILanguage(lang);
-    } else {
-      els.modeTagline.innerHTML = info.tagline;
-      applyUILanguage("ko");
+
+  /* ============ UI LANGUAGE SYSTEM (ko / en) — controls all menus, buttons, result text ============ */
+  var STRINGS = {
+    ko: {
+      settings:"설정", collection:"도감", achievements:"업적", developer:"개발자", language:"언어",
+      modeCampaign:"기본 노선", modeSpeed:"스피드", modeLastseat:"마지막 자리", modeDuel:"듀얼",
+      worldSeoul:"서울", worldTokyo:"도쿄", worldNewyork:"뉴욕", worldLondon:"런던",
+      noRecord:"아직 기록이 없어요",
+      bestRecord:function(score,combo){ return "지난 최고 기록 · 점수 "+score+" · 콤보 "+combo+"연속"; },
+      tCampaign:"지하철 문이 열리기 전, 누가 내릴지<br>먼저 알아채는 사람이 자리를 가진다.",
+      tSpeed:"제한 시간이 점점 짧아진다.<br>한 번이라도 놓치면 그대로 하차 — 얼마나 버틸 수 있을까?",
+      tLastseat:"정해진 시간 동안, 최대한 많은 자리를<br>연달아 잡아보세요. 실수해도 게임은 계속됩니다.",
+      tDuel:"승객 단 2명. 누가 먼저 내릴지<br>순식간에 골라야 하는 초단타 밸런스 게임.",
+      rule1:"승객들을 관찰하고, 아래 버튼으로 곧 내릴 것 같은 사람을 고르세요.",
+      rule2:"신호가 뜨면 표정이 놀란 얼굴로 바뀝니다 — 진짜는 딱 1번뿐이에요.",
+      rule3:"가끔 라이벌이 같은 자리를 노려요 — 먼저 골라야 자리를 지킵니다.",
+      startBtn:"승차하기",
+      selectorLabel:"곧 내릴 것 같은 사람을 고르세요",
+      bottomHint:"탭 = 예측 선택 · 꾹 누르기 = 확신 베팅 (×2)",
+      hitResult:function(gained, confident){ return "촉 적중! +"+gained+(confident?" (확신 ×2)":""); },
+      hitSub:"정확히 예측했습니다",
+      missNone:"못 골랐다...", missNoneSub:"선택 시간이 지났습니다",
+      missWrong:"자리 뺏김!", missWrongSub:function(n){ return "정답은 "+n+"번이었어요"; },
+      rivalSteal:"라이벌이 채갔다!", rivalStealSub:"정답은 맞았지만 한 발 늦었어요",
+      comboN:function(n){ return n+" COMBO"; }, comboPerfect:"PERFECT READ!", comboKing:"지하철 눈치왕!",
+      campaignClear:function(name){ return name+" 완주!"; }, newRecord:"신기록 달성!",
+      rankPct:function(p){ return "지하철 눈치력 상위 "+p+"%"; },
+      bestCombo:function(n){ return "최고 콤보 "+n+"연속"; },
+      nextLine:function(name){ return "다음 노선 타기 — "+name; },
+      restartAll:"처음부터 다시", restartClear:"처음부터 다시 (게임 클리어!)", retry:"다시 도전",
+      saveShare:"📷 결과 이미지 저장", adRevive:"📺 광고 보고 부활하기",
+      speedEnd:"스피드 모드 종료!", lastseatEnd:"마지막 자리 종료!",
+      yieldSeat:"자리 양보하기", ignoreSeat:"모른 척하기",
+      yieldedResult:"자리를 양보했습니다 +50", yieldedSub:"훈훈한 지하철",
+      ignoredResult:"못 본 척했다...", ignoredSub:"콤보가 초기화됐어요",
+      villainTapHint:"빠르게 탭해서 부끄럽게 만드세요!",
+      villainSpread:"다리를 쫙 벌리고 두 자리를 차지했다!", villainLying:"완전히 드러누웠다!",
+      villainWin:"빌런 도망감! +80", villainWinSub:"덕분에 자리가 넓어졌어요",
+      villainLose:"결국 못 쫓아냈다...", villainLoseSub:"다음 역까지 계속 저러고 있었다",
+      tutorialTap:"여기를 탭!",
+      settingsTitle:"설정", soundLabel:"사운드", vibrateLabel:"진동", colorblindLabel:"색약 모드",
+      captionsLabel:"효과음 자막", bgmLabel:"배경음(지하철 소음) 음량", textSizeLabel:"글씨 크기",
+      sizeNormal:"보통", sizeLarge:"크게", themeLabel:"차량 테마", close:"닫기",
+      dexTitle:"승객 도감", achTitle:"업적", locked:"???", notFound:"미발견",
+      timesSeen:function(n){ return n+"회 목격"; }, notAchieved:"미달성",
+      devTitle:"개발자",
+      devText:"최한민, HUFS CES\n\n현실에서 늘 사람들에게 자리를 양보하다 보니\n게임에서 만큼은 자리에 앉고 싶어서 만든 게임",
+      adPlaying:"광고 재생 중...", adWait:"잠시만 기다려주세요",
+      skipTap:"탭하면 건너뛰기",
+      eventTitle:"특별 이벤트",
+      eventPregnant:"임산부가 탑승했습니다.", eventElderly:"거동이 불편한 어르신이 탑승했습니다.",
+      departing:"하차합니다. 수고하셨습니다.", nextSegment:"다음 구간으로 이동합니다.",
+      nextSegmentTimer:function(s){ return "다음 구간으로 이동합니다 · 남은 시간 "+s+"초"; },
+      serviceEnd:"운행이 종료됩니다."
+    },
+    en: {
+      settings:"Settings", collection:"Dex", achievements:"Achievements", developer:"Developer", language:"Language",
+      modeCampaign:"Campaign", modeSpeed:"Speed", modeLastseat:"Last Seat", modeDuel:"Duel",
+      worldSeoul:"Seoul", worldTokyo:"Tokyo", worldNewyork:"New York", worldLondon:"London",
+      noRecord:"No record yet",
+      bestRecord:function(score,combo){ return "Best · Score "+score+" · Combo x"+combo; },
+      tCampaign:"Before the doors open, whoever notices<br>who's about to leave gets the seat.",
+      tSpeed:"The time limit keeps shrinking.<br>Miss even once and you're out — how long can you last?",
+      tLastseat:"Grab as many seats as you can<br>in the time limit. Mistakes don't end the run.",
+      tDuel:"Just 2 passengers. Whoever gets off first —<br>a lightning-fast guessing duel.",
+      rule1:"Watch the passengers and tap the button for who you think will get off.",
+      rule2:"A signal makes their face look startled — the real one only signals once.",
+      rule3:"Sometimes a rival is watching too — call it first or lose the seat.",
+      startBtn:"Board the train",
+      selectorLabel:"Pick who's about to get off",
+      bottomHint:"Tap = predict · Hold = confident bet (×2)",
+      hitResult:function(gained, confident){ return "Nice call! +"+gained+(confident?" (confident x2)":""); },
+      hitSub:"You predicted it correctly",
+      missNone:"Too late...", missNoneSub:"Time's up",
+      missWrong:"Seat stolen!", missWrongSub:function(n){ return "The answer was #"+n; },
+      rivalSteal:"The rival got there first!", rivalStealSub:"You were right, but too slow",
+      comboN:function(n){ return n+" COMBO"; }, comboPerfect:"PERFECT READ!", comboKing:"Subway Sixth Sense!",
+      campaignClear:function(name){ return name+" cleared!"; }, newRecord:"New record!",
+      rankPct:function(p){ return "Top "+p+"% subway sense"; },
+      bestCombo:function(n){ return "Best combo x"+n; },
+      nextLine:function(name){ return "Next line — "+name; },
+      restartAll:"Start over", restartClear:"Start over (Cleared!)", retry:"Try again",
+      saveShare:"📷 Save result image", adRevive:"📺 Watch ad to revive",
+      speedEnd:"Speed mode over!", lastseatEnd:"Last Seat over!",
+      yieldSeat:"Offer the seat", ignoreSeat:"Pretend not to notice",
+      yieldedResult:"You offered your seat +50", yieldedSub:"A kind subway moment",
+      ignoredResult:"You looked away...", ignoredSub:"Combo reset",
+      villainTapHint:"Tap fast to shame them away!",
+      villainSpread:"Manspreading across two seats!", villainLying:"Sprawled across the whole bench!",
+      villainWin:"Villain fled! +80", villainWinSub:"The bench is roomy again",
+      villainLose:"Couldn't chase them off...", villainLoseSub:"They stayed like that until the next stop",
+      tutorialTap:"Tap here!",
+      settingsTitle:"Settings", soundLabel:"Sound", vibrateLabel:"Vibration", colorblindLabel:"Colorblind mode",
+      captionsLabel:"Sound captions", bgmLabel:"Background (subway) volume", textSizeLabel:"Text size",
+      sizeNormal:"Normal", sizeLarge:"Large", themeLabel:"Car theme", close:"Close",
+      dexTitle:"Passenger Dex", achTitle:"Achievements", locked:"???", notFound:"Not found",
+      timesSeen:function(n){ return "Seen "+n+"x"; }, notAchieved:"Not yet",
+      devTitle:"Developer",
+      devText:"Choi Hanmin, HUFS CES\n\nI always give up my seat to others in real life,\nso I made a game where I finally get to sit.",
+      adPlaying:"Playing ad...", adWait:"Please wait",
+      skipTap:"Tap to skip",
+      eventTitle:"Special Event",
+      eventPregnant:"A pregnant passenger boarded.", eventElderly:"An elderly passenger boarded.",
+      departing:"Getting off. Thanks for riding.", nextSegment:"Moving to the next segment.",
+      nextSegmentTimer:function(s){ return "Moving to the next segment · "+s+"s left"; },
+      serviceEnd:"Service is ending."
     }
-    var best = getBest(info.key);
-    els.bestRecord.textContent = best.score > 0 ? ("지난 최고 기록 · 점수 " + best.score + " · 콤보 " + best.combo + "연속") : "아직 기록이 없어요";
+  };
+  function T(key){
+    var lang = (settings.uiLang === "en") ? "en" : "ko";
+    var v = STRINGS[lang][key];
+    if(typeof v === "function") return v.apply(null, Array.prototype.slice.call(arguments,1));
+    return v;
+  }
+  var ARCH_TAG_EN = { sleep:"Sleeping", phone:"On phone", bag:"Checking bag", map:"Checking map", earbud:"Earbuds", book:"Reading", drunk:"Tipsy" };
+  function archTag(a){ return settings.uiLang === "en" ? ARCH_TAG_EN[a] : ARCH_TAG[a]; }
+
+  function applyLanguageEverywhere(){
+    document.getElementById("settingsBtn").textContent = "⚙️ " + T("settings");
+    document.getElementById("collectionBtn").textContent = "📖 " + T("collection");
+    document.getElementById("achievementsBtn").textContent = "🏆 " + T("achievements");
+    document.getElementById("devBtn").textContent = "👨‍💻 " + T("developer");
+    document.querySelector('.mode-tab[data-mode="campaign"]').textContent = T("modeCampaign");
+    document.querySelector('.mode-tab[data-mode="speed"]').textContent = T("modeSpeed");
+    document.querySelector('.mode-tab[data-mode="lastseat"]').textContent = T("modeLastseat");
+    document.querySelector('.mode-tab[data-mode="duel"]').textContent = T("modeDuel");
+    var wp = document.querySelector('.world-pill[data-world="seoul"]'); if(wp) wp.textContent = "🇰🇷 " + T("worldSeoul");
+    wp = document.querySelector('.world-pill[data-world="tokyo"]'); if(wp) wp.textContent = "🇯🇵 " + T("worldTokyo");
+    wp = document.querySelector('.world-pill[data-world="newyork"]'); if(wp) wp.textContent = "🇺🇸 " + T("worldNewyork");
+    wp = document.querySelector('.world-pill[data-world="london"]'); if(wp) wp.textContent = "🇬🇧 " + T("worldLondon");
+    els.ruleText1.textContent = T("rule1");
+    els.ruleText2.textContent = T("rule2");
+    els.ruleText3.textContent = T("rule3");
+    els.startBtn.textContent = T("startBtn");
+    els.bottomHint.innerHTML = "<b>" + (settings.uiLang==="en" ? "Tap" : "탭") + "</b> = " + (settings.uiLang==="en" ? "predict · " : "예측 선택 · ") + "<b>" + (settings.uiLang==="en" ? "Hold" : "꾹 누르기") + "</b> = " + (settings.uiLang==="en" ? "confident bet (×2)" : "확신 베팅 (×2)");
+    if(els.selectorLabel) els.selectorLabel.textContent = T("selectorLabel");
+    document.getElementById("settingsModal").querySelector("h3").textContent = T("settingsTitle");
+    var rows = document.querySelectorAll("#settingsModal .setting-row span");
+    if(rows[0]) rows[0].textContent = T("soundLabel");
+    if(rows[1]) rows[1].textContent = T("vibrateLabel");
+    if(rows[2]) rows[2].textContent = T("colorblindLabel");
+    if(rows[3]) rows[3].textContent = T("captionsLabel");
+    var labels = document.querySelectorAll("#settingsModal > div > div[style*='margin-top']");
+    document.getElementById("settingsModalClose").textContent = T("close");
+    document.querySelector('.scale-btn[data-scale="normal"]').textContent = T("sizeNormal");
+    document.querySelector('.scale-btn[data-scale="large"]').textContent = T("sizeLarge");
+    document.getElementById("collectionModal").querySelector("h3").textContent = T("dexTitle");
+    document.getElementById("collectionModalClose").textContent = T("close");
+    document.getElementById("achievementsModal").querySelector("h3").textContent = T("achTitle");
+    document.getElementById("achievementsModalClose").textContent = T("close");
+    document.getElementById("devModal").querySelector("h3").textContent = T("devTitle");
+    document.getElementById("devModal").querySelector("p").textContent = T("devText");
+    document.getElementById("devModalClose").textContent = T("close");
+    els.eventYieldBtn.textContent = T("yieldSeat");
+    els.eventIgnoreBtn.textContent = T("ignoreSeat");
+    if(els.introOverlay) els.introOverlay.querySelector(".intro-skip").textContent = T("skipTap");
+    if(els.tutorialHint) els.tutorialHint.querySelector("span").textContent = T("tutorialTap");
+    renderThemeRow();
+    renderCollection();
+    renderAchievementsGrid();
+    refreshStartScreen();
+  }
+
+  var MODE_TAGLINE_KEY = { campaign:"tCampaign", speed:"tSpeed", lastseat:"tLastseat", duel:"tDuel" };
+  var MODE_BEST_KEY = { campaign:"campaign", speed:"speed", lastseat:"lastseat", duel:"duel" };
+  function refreshStartScreen(){
+    els.modeTagline.innerHTML = T(MODE_TAGLINE_KEY[state.mode] || "tCampaign");
+    var best = getBest(MODE_BEST_KEY[state.mode] || "campaign");
+    els.bestRecord.textContent = best.score > 0 ? T("bestRecord", best.score, best.combo) : T("noRecord");
     if(els.worldRow) els.worldRow.style.display = state.mode === "campaign" ? "flex" : "none";
   }
+
   document.querySelectorAll(".mode-tab").forEach(function(tab){
     tab.addEventListener("click", function(){
       document.querySelectorAll(".mode-tab").forEach(function(t){ t.classList.remove("selected"); });
@@ -1671,6 +1822,7 @@
   els.settingsBtn.addEventListener("click", function(){ applySettingsToUI(); els.settingsModal.classList.remove("hidden"); });
   els.settingsModalClose.addEventListener("click", function(){ els.settingsModal.classList.add("hidden"); });
   applySettingsToUI();
+  applyLanguageEverywhere();
 
   /* ---- collection (도감) modal ---- */
   function renderCollection(){
@@ -1678,8 +1830,8 @@
       var n = collection[a] || 0, seen = n > 0;
       return '<div class="dex-item'+(seen?"":" locked")+'">'+
         '<div class="dex-icon">'+(seen ? DEX_ICON[a] : "❔")+'</div>'+
-        '<div class="dex-name">'+(seen ? ARCH_TAG[a] : "???")+'</div>'+
-        '<div class="dex-count">'+(seen ? (n+"회 목격") : "미발견")+'</div></div>';
+        '<div class="dex-name">'+(seen ? archTag(a) : T("locked"))+'</div>'+
+        '<div class="dex-count">'+(seen ? T("timesSeen", n) : T("notFound"))+'</div></div>';
     }).join("");
     els.dexGrid.innerHTML = html;
   }
@@ -1688,12 +1840,15 @@
 
   /* ---- achievements modal ---- */
   function renderAchievementsGrid(){
+    var isEn = settings.uiLang === "en";
     var html = ACHIEVEMENTS.map(function(a){
       var done = !!unlockedAch[a.id];
+      var name = isEn ? a.nameEn : a.name;
+      var desc = isEn ? a.descEn : a.desc;
       return '<div class="dex-item'+(done?"":" locked")+'">'+
         '<div class="dex-icon">'+(done ? "🏆" : "🔒")+'</div>'+
-        '<div class="dex-name">'+(done ? a.name : "???")+'</div>'+
-        '<div class="dex-count">'+(done ? a.desc : "미달성")+'</div></div>';
+        '<div class="dex-name">'+(done ? name : T("locked"))+'</div>'+
+        '<div class="dex-count">'+(done ? desc : T("notAchieved"))+'</div></div>';
     }).join("");
     els.achGrid.innerHTML = html;
   }
@@ -1702,6 +1857,11 @@
 
   /* ---- developer modal ---- */
   els.devBtn.addEventListener("click", function(){ els.devModal.classList.remove("hidden"); });
+  els.langBtn.addEventListener("click", function(){
+    settings.uiLang = (settings.uiLang === "en") ? "ko" : "en";
+    saveSettings();
+    applyLanguageEverywhere();
+  });
   els.devModalClose.addEventListener("click", function(){ els.devModal.classList.add("hidden"); });
 
   /* ---- accessibility captions for sound cues ---- */
