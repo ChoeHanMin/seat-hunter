@@ -150,7 +150,7 @@
   .tutorial-hint span{ font-size:10px; color:var(--signage-amber); background:#000; padding:2px 6px; border-radius:6px; margin-top:1px; white-space:nowrap; }
   @keyframes hintBounce{ 0%,100%{ transform:translateY(0); } 50%{ transform:translateY(6px); } }
 
-  .mode-tabs{ display:flex; gap:6px; width:100%; max-width:300px; margin-bottom:14px; }
+  .mode-tabs{ display:flex; gap:6px; width:100%; max-width:340px; margin-bottom:14px; flex-wrap:wrap; justify-content:center; }
   .mode-tab{ flex:1; background:var(--car-750); border:1px solid #3a4459; color:var(--steel-300); border-radius:8px;
     padding:8px 4px; font-size:11.5px; cursor:pointer; font-family:'Noto Sans KR', sans-serif; }
   .mode-tab.selected{ border-color:var(--signage-amber); color:var(--signage-amber); background:#3a2f14; }
@@ -410,6 +410,7 @@
       <button class="mode-tab" data-mode="speed">스피드</button>
       <button class="mode-tab" data-mode="lastseat">마지막 자리</button>
       <button class="mode-tab" data-mode="duel">듀얼</button>
+      <button class="mode-tab" data-mode="daily">🗓 일일 도전</button>
     </div>
     <div class="world-row" id="worldRow">
       <button class="world-pill selected" data-world="seoul">🇰🇷 서울</button>
@@ -419,12 +420,14 @@
     </div>
     <p class="tagline" id="modeTagline">지하철 문이 열리기 전, 누가 내릴지<br>먼저 알아채는 사람이 자리를 가진다.</p>
     <div class="best-record" id="bestRecord">아직 기록이 없어요</div>
+    <svg id="trendGraph" viewBox="0 0 200 40" style="width:180px; height:36px; margin-bottom:14px; display:none;"></svg>
     <ul class="rule-list">
       <li><span class="emoji">👀</span> <span id="ruleText1">승객들을 관찰하고, 아래 버튼으로 곧 내릴 것 같은 사람을 고르세요.</span></li>
       <li><span class="emoji">❗</span> <span id="ruleText2">신호가 뜨면 표정이 놀란 얼굴로 바뀝니다 — 진짜는 딱 1번뿐이에요.</span></li>
       <li><span class="emoji">🏃</span> <span id="ruleText3">가끔 라이벌이 같은 사람을 노려요 — 먼저 골라야 자리를 지킵니다.</span></li>
     </ul>
     <button class="btn-primary" id="startBtn">승차하기</button>
+    <button class="btn-secondary" id="resumeBtn" style="display:none;">▶ 이어하기</button>
   </div>
 
   <div class="overlay hidden" id="summaryScreen">
@@ -732,7 +735,7 @@
       if(done){ unlockedAch[a.id] = true; saveAchievements(); showAchievementToast(a); }
     });
   }
-  function showAchievementToast(a){ showCaption("🏆 " + (settings.uiLang === "en" ? a.nameEn : a.name)); sfxCombo(); }
+  function showAchievementToast(a){ showCaption("🏆 " + (settings.uiLang === "en" ? a.nameEn : a.name)); sfxCombo(); vib([15,15,15,15,15,15,80]); }
 
   /* ============ CAR THEMES ============ */
   var THEMES = {
@@ -762,6 +765,64 @@
     if(season === "christmas") return [ R(6,-2,32,6,"seasonSanta"), R(32,-6,7,7,"seasonSantaPom") ];
     return [];
   }
+
+  /* ============ DAILY CHALLENGE: seeded RNG so everyone gets the same passengers that day ============ */
+  var _origMathRandom = Math.random;
+  function mulberry32(seed){
+    return function(){
+      seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+      var t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+  }
+  function todayKey(){
+    var d = new Date();
+    return d.getFullYear() + "-" + (d.getMonth()+1) + "-" + d.getDate();
+  }
+  function hashSeed(str){
+    var h = 0;
+    for(var i=0;i<str.length;i++){ h = (h<<5)-h+str.charCodeAt(i); h |= 0; }
+    return h;
+  }
+  function enableDailySeed(){ Math.random = mulberry32(hashSeed(todayKey())); }
+  function disableDailySeed(){ Math.random = _origMathRandom; }
+  var DAILY_ROUNDS = 5;
+  function dailyLine(roundNum){
+    return { name:"일일 도전", color:"#f2b705", stations:["구간 "+(roundNum+1)], count:6, observeMs:4500, fakeLevel:1 };
+  }
+  var DAILY_KEY = "seatHunterDaily_v1";
+  function loadDailyRecord(){ try{ var raw = localStorage.getItem(DAILY_KEY); return raw ? JSON.parse(raw) : {}; }catch(e){ return {}; } }
+  function saveDailyRecord(rec){ try{ localStorage.setItem(DAILY_KEY, JSON.stringify(rec)); }catch(e){} }
+
+  /* ============ SESSION AUTO-SAVE (resume where you left off) ============ */
+  var SESSION_KEY = "seatHunterSession_v1";
+  function saveSession(){
+    try{
+      localStorage.setItem(SESSION_KEY, JSON.stringify({
+        mode: state.mode, world: state.world, lineIndex: state.lineIndex, stationIndex: state.stationIndex,
+        score: state.score, combo: state.combo, bestCombo: state.bestCombo, endless: state.endless,
+        adReviveUsed: state.adReviveUsed, savedAt: Date.now()
+      }));
+    }catch(e){}
+  }
+  function loadSession(){
+    try{
+      var raw = localStorage.getItem(SESSION_KEY);
+      if(!raw) return null;
+      var s = JSON.parse(raw);
+      if(Date.now() - (s.savedAt||0) > 24*3600*1000) return null; // stale session, ignore
+      return s;
+    }catch(e){ return null; }
+  }
+  function clearSession(){ try{ localStorage.removeItem(SESSION_KEY); }catch(e){} }
+
+  /* ============ SCORE HISTORY (trend graph) ============ */
+  var HISTORY_KEY = "seatHunterHistory_v1";
+  function loadHistory(){ try{ var raw = localStorage.getItem(HISTORY_KEY); return raw ? JSON.parse(raw) : []; }catch(e){ return []; } }
+  function saveHistoryData(){ try{ localStorage.setItem(HISTORY_KEY, JSON.stringify(scoreHistory.slice(-20))); }catch(e){} }
+  var scoreHistory = loadHistory();
+  function recordHistory(score, mode){ scoreHistory.push({score:score, mode:mode, t:Date.now()}); saveHistoryData(); }
 
   var CAMPAIGN_WORLDS = {
     seoul: [
@@ -1014,7 +1075,7 @@
    "collectionModal","collectionModalClose","dexGrid","devModal","devModalClose",
    "achievementsBtn","achievementsModal","achievementsModalClose","achGrid",
    "captionsToggle","bgmSlider","themeRow","introOverlay","a11yCaption",
-   "selectorLabel","ruleText1","ruleText2","ruleText3",
+   "selectorLabel","ruleText1","ruleText2","ruleText3","resumeBtn","trendGraph",
    "specialEventModal","eventIcon","eventText","eventYieldBtn","eventIgnoreBtn",
    "villainModal","villainCard","villainSprite","villainTapTarget","villainTapCount","villainTitle","villainHint",
    "summaryTitle","summarySubLine","summaryScore","summaryRank","summaryBadge","summaryCombo"
@@ -1055,6 +1116,7 @@
   function after(ms, fn){ var t = setTimeout(fn, ms); state.timers.push(t); return t; }
   function currentLine(){ return state.mode === "campaign" ? CAMPAIGN_WORLDS[state.world][state.lineIndex] : state.syntheticLine; }
   function syntheticLine(mode, roundNum){
+    if(mode === "daily") return dailyLine(roundNum);
     if(mode === "speed"){
       return { name:"스피드 모드", color:"#ef5b4a", stations:["구간 "+(roundNum+1)],
         count: clamp(5 + Math.floor(roundNum/4), 5, 7),
@@ -1241,6 +1303,7 @@
     clearTimers();
     state.selectedIdx = -1; state.confident = false; state.selectionElapsed = null; state.lastRoundFailed = false;
     state.roundStartTime = Date.now();
+    saveSession();
     var line = currentLine();
     var lang = langOf(line);
     var stationName = line.stations[state.stationIndex];
@@ -1325,9 +1388,10 @@
         state.score += gained; state.combo += 1; state.bestCombo = Math.max(state.bestCombo, state.combo);
         renderHUD();
         showResult("success", T("hitResult", gained, state.confident), T("hitSub"));
-        sfxSuccess(); vib(50);
+        sfxSuccess();
+        if(state.rival.active) vib([40,20,40]); else vib(50);
         var cap = comboCaption(state.combo);
-        if(cap) after(150, function(){ showCaption(cap); if(state.combo>=5) sfxCombo(); });
+        if(cap) after(150, function(){ showCaption(cap); if(state.combo>=5){ sfxCombo(); vib(state.combo>=10 ? [15,15,15,15,15,15,80] : [20,30,20,30,50]); } });
         state.lastRoundFailed = false;
         bumpStat("totalHits"); bumpStat("lifetimeScore", gained);
         if(state.confident) bumpStat("confidentWins");
@@ -1423,6 +1487,13 @@
       if(state.stationIndex >= line.stations.length){ showSummary(); } else { maybeSpecialEvent(startStation); }
       return;
     }
+    if(state.mode === "daily"){
+      state.endless.roundNum += 1;
+      if(state.endless.roundNum >= DAILY_ROUNDS){ endDaily(); return; }
+      state.syntheticLine = syntheticLine("daily", state.endless.roundNum);
+      startStation();
+      return;
+    }
     if(state.mode === "lastseat"){
       if(Date.now() >= state.endless.deadline){ endEndless(); return; }
       state.endless.roundNum += 1;
@@ -1462,7 +1533,7 @@
       if(yielded){
         state.score += 50; renderHUD();
         showResult("success", T("yieldedResult"), T("yieldedSub"));
-        sfxSuccess(); vib(50);
+        sfxSuccess(); vib(60);
         bumpStat("lifetimeScore", 50);
       } else {
         state.combo = 0; renderHUD();
@@ -1501,7 +1572,7 @@
         els.villainCard.classList.add("fleeing");
         state.score += 80; renderHUD();
         showResult("success", T("villainWin"), T("villainWinSub"));
-        sfxSuccess(); vib(50);
+        sfxSuccess(); vib([25,25,25,25,60]);
         bumpStat("villainWins"); bumpStat("lifetimeScore", 80);
         after(650, function(){ els.villainModal.classList.add("hidden"); proceedFn(); });
       } else {
@@ -1545,6 +1616,8 @@
     els.shareBtn.textContent = T("saveShare");
     if(els.adReviveBtn) els.adReviveBtn.style.display = "none";
     if(isLast) bumpStat("campaignClears");
+    recordHistory(state.score, "campaign");
+    if(isLast) clearSession(); else saveSession();
     els.summaryScreen.classList.remove("hidden");
   }
   function endEndless(){
@@ -1567,21 +1640,65 @@
       els.adReviveBtn.style.display = canRevive ? "block" : "none";
       els.adReviveBtn.textContent = T("adRevive");
     }
+    recordHistory(state.score, modeKey);
+    clearSession();
+    els.summaryScreen.classList.remove("hidden");
+  }
+  function endDaily(){
+    clearTimers();
+    disableDailySeed();
+    var todayRec = loadDailyRecord();
+    var key = todayKey();
+    var improved = false;
+    if(!todayRec[key] || state.score > todayRec[key].score){
+      improved = todayRec[key] != null;
+      todayRec[key] = { score: state.score, combo: state.bestCombo };
+      saveDailyRecord(todayRec);
+    }
+    els.summaryTitle.textContent = (settings.uiLang==="en" ? "Daily Challenge complete!" : "일일 도전 완료!") + (improved ? " 🎉" : "");
+    els.summarySubLine.textContent = todayKey();
+    els.summaryScore.textContent = String(state.score).padStart(4,"0");
+    var pct = clamp(Math.round(100 - state.score/38), 1, 97);
+    els.summaryRank.textContent = T("rankPct", pct);
+    els.summaryBadge.textContent = badgeFor(state.score);
+    els.summaryCombo.textContent = T("bestCombo", state.bestCombo);
+    els.nextBtn.style.display = "none";
+    els.restartBtn.textContent = T("retry");
+    els.shareBtn.textContent = T("saveShare");
+    if(els.adReviveBtn) els.adReviveBtn.style.display = "none";
+    recordHistory(state.score, "daily");
+    clearSession();
     els.summaryScreen.classList.remove("hidden");
   }
 
   function startCampaign(){
+    disableDailySeed();
     state.mode = "campaign";
     state.lineIndex = 0; state.stationIndex = 0; state.score = 0; state.combo = 0; state.bestCombo = 0;
     startStation();
   }
   function startEndless(mode){
+    if(mode === "daily") enableDailySeed(); else disableDailySeed();
     state.mode = mode;
     state.score = 0; state.combo = 0; state.bestCombo = 0; state.stationIndex = 0;
     state.adReviveUsed = false;
     state.endless = { roundNum:0, deadline: mode==="lastseat" ? Date.now()+75000 : 0 };
     state.syntheticLine = syntheticLine(mode, 0);
     startStation();
+  }
+  function resumeGame(){
+    var s = loadSession();
+    if(!s) return;
+    if(s.mode === "daily") enableDailySeed(); else disableDailySeed();
+    state.mode = s.mode; state.world = s.world || "seoul";
+    state.lineIndex = s.lineIndex||0; state.stationIndex = s.stationIndex||0;
+    state.score = s.score||0; state.combo = s.combo||0; state.bestCombo = s.bestCombo||0;
+    state.endless = s.endless || {roundNum:0, deadline:0};
+    state.adReviveUsed = s.adReviveUsed||false;
+    if(state.mode !== "campaign"){ state.syntheticLine = syntheticLine(state.mode, state.endless.roundNum); }
+    ensureAudio(); startBGM();
+    els.startScreen.classList.add("hidden");
+    playIntro(function(){ startStation(); });
   }
   function showAdPlaceholder(cb){
     els.adModal.classList.remove("hidden");
@@ -1665,6 +1782,8 @@
       tSpeed:"제한 시간이 점점 짧아진다.<br>한 번이라도 놓치면 그대로 하차 — 얼마나 버틸 수 있을까?",
       tLastseat:"정해진 시간 동안, 최대한 많은 자리를<br>연달아 잡아보세요. 실수해도 게임은 계속됩니다.",
       tDuel:"승객 단 2명. 누가 먼저 내릴지<br>순식간에 골라야 하는 초단타 밸런스 게임.",
+      tDaily:"매일 같은 승객 구성! 오늘 하루,<br>친구와 똑같은 조건으로 점수를 겨뤄보세요.",
+      modeDaily:"🗓 일일 도전", resumeBtn:"▶ 이어하기",
       rule1:"승객들을 관찰하고, 아래 버튼으로 곧 내릴 것 같은 사람을 고르세요.",
       rule2:"신호가 뜨면 표정이 놀란 얼굴로 바뀝니다 — 진짜는 딱 1번뿐이에요.",
       rule3:"가끔 라이벌이 같은 자리를 노려요 — 먼저 골라야 자리를 지킵니다.",
@@ -1717,6 +1836,8 @@
       tSpeed:"The time limit keeps shrinking.<br>Miss even once and you're out — how long can you last?",
       tLastseat:"Grab as many seats as you can<br>in the time limit. Mistakes don't end the run.",
       tDuel:"Just 2 passengers. Whoever gets off first —<br>a lightning-fast guessing duel.",
+      tDaily:"Same passengers for everyone, every day!<br>Compare scores fairly with friends today.",
+      modeDaily:"🗓 Daily", resumeBtn:"▶ Resume",
       rule1:"Watch the passengers and tap the button for who you think will get off.",
       rule2:"A signal makes their face look startled — the real one only signals once.",
       rule3:"Sometimes a rival is watching too — call it first or lose the seat.",
@@ -1778,6 +1899,8 @@
     document.querySelector('.mode-tab[data-mode="speed"]').textContent = T("modeSpeed");
     document.querySelector('.mode-tab[data-mode="lastseat"]').textContent = T("modeLastseat");
     document.querySelector('.mode-tab[data-mode="duel"]').textContent = T("modeDuel");
+    document.querySelector('.mode-tab[data-mode="daily"]').textContent = T("modeDaily");
+    if(els.resumeBtn) els.resumeBtn.textContent = T("resumeBtn");
     var wp = document.querySelector('.world-pill[data-world="seoul"]'); if(wp) wp.textContent = "🇰🇷 " + T("worldSeoul");
     wp = document.querySelector('.world-pill[data-world="tokyo"]'); if(wp) wp.textContent = "🇯🇵 " + T("worldTokyo");
     wp = document.querySelector('.world-pill[data-world="newyork"]'); if(wp) wp.textContent = "🇺🇸 " + T("worldNewyork");
@@ -1815,13 +1938,44 @@
     refreshStartScreen();
   }
 
-  var MODE_TAGLINE_KEY = { campaign:"tCampaign", speed:"tSpeed", lastseat:"tLastseat", duel:"tDuel" };
+  var MODE_TAGLINE_KEY = { campaign:"tCampaign", speed:"tSpeed", lastseat:"tLastseat", duel:"tDuel", daily:"tDaily" };
   var MODE_BEST_KEY = { campaign:"campaign", speed:"speed", lastseat:"lastseat", duel:"duel" };
+  function renderTrendGraph(){
+    if(!els.trendGraph) return;
+    var relevant = scoreHistory.filter(function(h){ return h.mode === state.mode; }).slice(-10);
+    if(relevant.length < 2){ els.trendGraph.style.display = "none"; return; }
+    var max = Math.max.apply(null, relevant.map(function(h){ return h.score; }).concat([1]));
+    var w = 200, h = 40, pad = 4;
+    var stepX = (w - pad*2) / (relevant.length - 1);
+    var pts = relevant.map(function(entry, i){
+      var x = pad + i*stepX;
+      var y = h - pad - (entry.score/max) * (h - pad*2);
+      return x.toFixed(1) + "," + y.toFixed(1);
+    }).join(" ");
+    els.trendGraph.innerHTML =
+      '<polyline points="'+pts+'" fill="none" stroke="#ffb703" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>' +
+      relevant.map(function(entry, i){
+        var x = pad + i*stepX;
+        var y = h - pad - (entry.score/max) * (h - pad*2);
+        return '<circle cx="'+x.toFixed(1)+'" cy="'+y.toFixed(1)+'" r="2" fill="#ffb703"/>';
+      }).join("");
+    els.trendGraph.style.display = "block";
+  }
   function refreshStartScreen(){
     els.modeTagline.innerHTML = T(MODE_TAGLINE_KEY[state.mode] || "tCampaign");
-    var best = getBest(MODE_BEST_KEY[state.mode] || "campaign");
-    els.bestRecord.textContent = best.score > 0 ? T("bestRecord", best.score, best.combo) : T("noRecord");
+    if(state.mode === "daily"){
+      var rec = loadDailyRecord()[todayKey()];
+      els.bestRecord.textContent = rec ? T("bestRecord", rec.score, rec.combo) + " (" + todayKey() + ")" : T("noRecord") + " · " + todayKey();
+    } else {
+      var best = getBest(MODE_BEST_KEY[state.mode] || "campaign");
+      els.bestRecord.textContent = best.score > 0 ? T("bestRecord", best.score, best.combo) : T("noRecord");
+    }
     if(els.worldRow) els.worldRow.style.display = state.mode === "campaign" ? "flex" : "none";
+    renderTrendGraph();
+    if(els.resumeBtn){
+      var sess = loadSession();
+      els.resumeBtn.style.display = sess ? "block" : "none";
+    }
   }
 
   document.querySelectorAll(".mode-tab").forEach(function(tab){
@@ -1957,6 +2111,7 @@
       if(state.mode === "campaign"){ startCampaign(); } else { startEndless(state.mode); }
     });
   });
+  els.resumeBtn.addEventListener("click", resumeGame);
   els.nextBtn.addEventListener("click", goNextLine);
   els.restartBtn.addEventListener("click", restartGame);
   els.shareBtn.addEventListener("click", generateShareCard);
@@ -1977,8 +2132,32 @@
 <script>
   if("serviceWorker" in navigator){
     window.addEventListener("load", function(){
-      navigator.serviceWorker.register("sw.js").catch(function(){});
+      navigator.serviceWorker.register("sw.js").then(function(reg){
+        reg.addEventListener("updatefound", function(){
+          var newWorker = reg.installing;
+          if(!newWorker) return;
+          newWorker.addEventListener("statechange", function(){
+            if(newWorker.state === "installed" && navigator.serviceWorker.controller){
+              showUpdateToast();
+            }
+          });
+        });
+      }).catch(function(){});
     });
+  }
+  function showUpdateToast(){
+    if(document.getElementById("swUpdateToast")) return;
+    var isEn = false;
+    try{ isEn = JSON.parse(localStorage.getItem("seatHunterSettings_v1")||"{}").uiLang === "en"; }catch(e){}
+    var toast = document.createElement("div");
+    toast.id = "swUpdateToast";
+    toast.style.cssText = "position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:9999;"+
+      "background:#12b45c;color:#04150a;padding:12px 20px;border-radius:12px;"+
+      "font-family:'Noto Sans KR',sans-serif;font-weight:700;font-size:13px;cursor:pointer;"+
+      "box-shadow:0 8px 22px rgba(0,0,0,.45);max-width:88vw;text-align:center;";
+    toast.textContent = isEn ? "🔄 New update available — tap to refresh" : "🔄 새 업데이트가 있어요 · 탭해서 새로고침";
+    toast.onclick = function(){ window.location.reload(); };
+    document.body.appendChild(toast);
   }
 </script>
 </body>
