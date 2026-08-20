@@ -58,6 +58,28 @@
   .scene{ position:relative; z-index:2; flex:1; display:flex; flex-direction:column; padding:0 10px 6px; min-height:0; }
 
   .caption-toast{ position:absolute; left:0; right:0; top:16%; text-align:center; z-index:5; pointer-events:none; }
+
+  .confetti-layer{ position:absolute; inset:0; z-index:15; pointer-events:none; overflow:hidden; }
+  .confetti-piece{ position:absolute; top:-10px; width:7px; height:11px; opacity:.95; animation:confettiFall 1.4s ease-in forwards; }
+  @keyframes confettiFall{
+    0%{ transform:translateY(0) rotate(0deg); opacity:1; }
+    100%{ transform:translateY(340px) rotate(540deg); opacity:0; }
+  }
+  #stage.shake{ animation:screenShake .4s ease-in-out; }
+  @keyframes screenShake{
+    0%,100%{ transform:translateX(0); } 20%{ transform:translateX(-6px) translateY(2px); }
+    40%{ transform:translateX(6px) translateY(-2px); } 60%{ transform:translateX(-4px); } 80%{ transform:translateX(4px); }
+  }
+
+  .golden-hour-banner{ position:absolute; left:6%; right:6%; top:8%; z-index:16; text-align:center; padding:8px 10px;
+    background:linear-gradient(135deg,#ffd700,#ff8c00); border-radius:12px; box-shadow:0 6px 20px rgba(255,180,0,.6);
+    opacity:0; transform:translateY(-14px); transition:opacity .3s, transform .3s; pointer-events:none; }
+  .golden-hour-banner.show{ opacity:1; transform:translateY(0); }
+  .golden-hour-banner span{ font-family:'Black Han Sans', sans-serif; color:#3a1c00; font-size:15px; }
+  .rarity-tag{ display:inline-block; font-size:8px; padding:1px 6px; border-radius:8px; margin-top:2px; font-weight:700; }
+  .rarity-common{ background:#3a4459; color:var(--steel-300); }
+  .rarity-rare{ background:#2e5aa8; color:#cfe0ff; }
+  .rarity-legendary{ background:linear-gradient(135deg,#ffd700,#ff8c00); color:#3a1c00; }
   .caption-toast span{ display:inline-block; font-family:'Black Han Sans', sans-serif; font-size:26px; color:var(--signage-amber);
     text-shadow:0 3px 0 #000, 0 0 20px rgba(255,183,3,.5); opacity:0; transform:scale(.6); }
   .caption-toast span.show{ animation:captionPop .95s cubic-bezier(.2,1.4,.4,1) forwards; }
@@ -136,6 +158,9 @@
     align-items:center; justify-content:center; opacity:0; transform:scale(.3) translateY(6px);
     box-shadow:0 0 10px rgba(255,183,3,.8); transition:opacity .15s, transform .15s; }
   .tell-badge.show{ opacity:1; transform:scale(1) translateY(0); animation:badgeBounce .5s ease; }
+  .tell-badge.golden{ background:linear-gradient(135deg,#ffd700,#fff3b0); box-shadow:0 0 16px rgba(255,215,0,.95); animation:badgeBounce .5s ease, goldenPulse 1s ease-in-out infinite; }
+  @keyframes goldenPulse{ 0%,100%{ box-shadow:0 0 12px rgba(255,215,0,.8); } 50%{ box-shadow:0 0 22px rgba(255,215,0,1); } }
+  .seat.golden-glow .sprite-wrap{ filter:drop-shadow(0 0 12px rgba(255,215,0,.9)) drop-shadow(0 0 4px rgba(255,255,255,.8)); }
   @keyframes badgeBounce{ 0%{transform:scale(0.3) translateY(6px);} 55%{transform:scale(1.25) translateY(-3px);} 100%{transform:scale(1) translateY(0);} }
 
   .rival-badge{ position:absolute; top:-4px; left:6%; z-index:4; width:16px; height:16px; border-radius:50%;
@@ -155,6 +180,9 @@
     padding:8px 4px; font-size:11.5px; cursor:pointer; font-family:'Noto Sans KR', sans-serif; }
   .mode-tab.selected{ border-color:var(--signage-amber); color:var(--signage-amber); background:#3a2f14; }
   .best-record{ font-size:11.5px; color:var(--steel-400); margin-bottom:16px; }
+  .streak-badge{ display:inline-block; font-family:'DotGothic16', monospace; font-size:13px; color:var(--signage-amber);
+    background:#3a2f14; border:1px solid var(--signage-amber); border-radius:16px; padding:4px 14px; margin-bottom:10px; }
+  .goal-teaser{ font-size:11px; color:var(--steel-300); margin:-8px 0 14px; }
 
   .icon-btn-row{ display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap; justify-content:center; }
   .icon-btn{ background:var(--car-750); border:1px solid #3a4459; color:var(--steel-300); border-radius:8px;
@@ -373,6 +401,7 @@
     <div class="car-body" id="carBody">
       <div class="result-banner" id="resultBanner"><span id="resultText"></span><small id="resultSub"></small></div>
       <div class="next-stop-banner" id="nextStopBanner"><svg viewBox="0 0 400 260" xmlns="http://www.w3.org/2000/svg"><path d="M 200.0,30.2 Q 233.9,74.7 294.6,63.0 Q 285.9,100.5 381.2,111.0 Q 297.7,140.2 317.8,170.4 Q 263.8,175.1 254.7,219.3 Q 200.0,188.9 134.3,237.1 Q 136.2,175.1 68.4,175.1 Q 102.3,140.2 26.7,111.9 Q 114.1,100.6 109.5,66.0 Q 166.1,74.7 200.0,30.2 Z" fill="#ffffff" stroke="#0c1017" stroke-width="4" stroke-linejoin="round"/></svg><span id="nextStopText"></span></div>
+      <div class="golden-hour-banner" id="goldenHourBanner"><span id="goldenHourText">⚡ 황금 시간! 2배 점수 ⚡</span></div>
       <div class="door-flash" id="doorFlash"></div>
       <div class="ceiling">
         <div class="rail"></div>
@@ -419,7 +448,9 @@
       <button class="world-pill" data-world="london">🇬🇧 런던</button>
     </div>
     <p class="tagline" id="modeTagline">지하철 문이 열리기 전, 누가 내릴지<br>먼저 알아채는 사람이 자리를 가진다.</p>
+    <span class="streak-badge" id="streakBadge" style="display:none;"></span>
     <div class="best-record" id="bestRecord">아직 기록이 없어요</div>
+    <div class="goal-teaser" id="goalTeaser" style="display:none;"></div>
     <svg id="trendGraph" viewBox="0 0 200 40" style="width:180px; height:36px; margin-bottom:14px; display:none;"></svg>
     <ul class="rule-list">
       <li><span class="emoji">👀</span> <span id="ruleText1">승객들을 관찰하고, 아래 버튼으로 곧 내릴 것 같은 사람을 고르세요.</span></li>
@@ -701,6 +732,7 @@
   var collection = loadCollection();
   function recordSeen(archetype){ collection[archetype] = (collection[archetype]||0) + 1; saveCollection(); }
   var DEX_ICON = { sleep:"😴", phone:"📱", bag:"🎒", map:"🗺️", earbud:"🎧", book:"📖", drunk:"🍺" };
+  var RARITY = { sleep:"common", phone:"common", bag:"common", map:"common", earbud:"common", book:"common", drunk:"rare" };
   var DEX_ORDER = ["sleep","phone","bag","map","earbud","book","drunk"];
 
   /* ============ STATS & ACHIEVEMENTS ============ */
@@ -802,7 +834,7 @@
       localStorage.setItem(SESSION_KEY, JSON.stringify({
         mode: state.mode, world: state.world, lineIndex: state.lineIndex, stationIndex: state.stationIndex,
         score: state.score, combo: state.combo, bestCombo: state.bestCombo, endless: state.endless,
-        adReviveUsed: state.adReviveUsed, savedAt: Date.now()
+        adReviveUsed: state.adReviveUsed, comboShieldUsed: state.comboShieldUsed, savedAt: Date.now()
       }));
     }catch(e){}
   }
@@ -823,6 +855,40 @@
   function saveHistoryData(){ try{ localStorage.setItem(HISTORY_KEY, JSON.stringify(scoreHistory.slice(-20))); }catch(e){} }
   var scoreHistory = loadHistory();
   function recordHistory(score, mode){ scoreHistory.push({score:score, mode:mode, t:Date.now()}); saveHistoryData(); }
+
+  /* ============ DAILY STREAK (retention hook) ============ */
+  var STREAK_KEY = "seatHunterStreak_v1";
+  function loadStreak(){ try{ var raw = localStorage.getItem(STREAK_KEY); return raw ? JSON.parse(raw) : {count:0,lastDate:null}; }catch(e){ return {count:0,lastDate:null}; } }
+  function saveStreakData(){ try{ localStorage.setItem(STREAK_KEY, JSON.stringify(streakData)); }catch(e){} }
+  var streakData = loadStreak();
+  var streakIsNewToday = false;
+  function yesterdayKey(){
+    var d = new Date(); d.setDate(d.getDate()-1);
+    return d.getFullYear() + "-" + (d.getMonth()+1) + "-" + d.getDate();
+  }
+  function checkStreakOnBoot(){
+    var today = todayKey();
+    if(streakData.lastDate === today) return;
+    streakData.count = (streakData.lastDate === yesterdayKey()) ? streakData.count + 1 : 1;
+    streakData.lastDate = today;
+    saveStreakData();
+    streakIsNewToday = true;
+  }
+
+  /* ============ COMEBACK BONUS ============ */
+  var LASTSEEN_KEY = "seatHunterLastSeen_v1";
+  var comebackBonusPending = false;
+  function checkComebackOnBoot(){
+    try{
+      var last = parseInt(localStorage.getItem(LASTSEEN_KEY) || "0", 10);
+      var now = Date.now();
+      if(last > 0 && (now - last) >= 24*3600*1000){ comebackBonusPending = true; }
+      localStorage.setItem(LASTSEEN_KEY, String(now));
+    }catch(e){}
+  }
+
+  /* ============ GOLDEN PASSENGER (rare variable-reward bonus) ============ */
+  var GOLDEN_CHANCE = 0.10;
 
   var CAMPAIGN_WORLDS = {
     seoul: [
@@ -1075,7 +1141,8 @@
    "collectionModal","collectionModalClose","dexGrid","devModal","devModalClose",
    "achievementsBtn","achievementsModal","achievementsModalClose","achGrid",
    "captionsToggle","bgmSlider","themeRow","introOverlay","a11yCaption",
-   "selectorLabel","ruleText1","ruleText2","ruleText3","resumeBtn","trendGraph",
+   "selectorLabel","ruleText1","ruleText2","ruleText3","resumeBtn","trendGraph","streakBadge","goalTeaser",
+   "goldenHourBanner","goldenHourText",
    "specialEventModal","eventIcon","eventText","eventYieldBtn","eventIgnoreBtn",
    "villainModal","villainCard","villainSprite","villainTapTarget","villainTapCount","villainTitle","villainHint",
    "summaryTitle","summarySubLine","summaryScore","summaryRank","summaryBadge","summaryCombo"
@@ -1106,7 +1173,8 @@
   var state = { lineIndex:0, stationIndex:0, score:0, combo:0, bestCombo:0, mode:"campaign", world:"seoul",
     passengers:[], leaverIdx:-1, selectedIdx:-1, confident:false, roundActive:false, timers:[],
     rival:{active:false,claimTime:0,revealed:false}, endless:{roundNum:0,deadline:0}, syntheticLine:null,
-    lastRoundFailed:false, selectionElapsed:null, roundStartTime:0, doorSide:"왼쪽", adReviveUsed:false };
+    lastRoundFailed:false, selectionElapsed:null, roundStartTime:0, doorSide:"왼쪽", adReviveUsed:false, comboShieldUsed:false,
+    goldenHourRoundsLeft:0 };
 
 
   function clamp(n,a,b){ return Math.max(a,Math.min(b,n)); }
@@ -1172,6 +1240,41 @@
     return null;
   }
 
+  /* ---- "juice": confetti burst + screen shake for big moments ---- */
+  var CONFETTI_COLORS = ["#ffb703","#12b45c","#8b5cf6","#ef5b4a","#3aa0d9","#ff6fae"];
+  function burstConfetti(){
+    var stageEl = document.getElementById("stage");
+    var layer = document.createElement("div");
+    layer.className = "confetti-layer";
+    for(var i=0;i<26;i++){
+      var piece = document.createElement("div");
+      piece.className = "confetti-piece";
+      piece.style.left = (Math.random()*100) + "%";
+      piece.style.background = CONFETTI_COLORS[Math.floor(Math.random()*CONFETTI_COLORS.length)];
+      piece.style.animationDelay = (Math.random()*0.3) + "s";
+      piece.style.animationDuration = (1.1 + Math.random()*0.6) + "s";
+      layer.appendChild(piece);
+    }
+    stageEl.appendChild(layer);
+    after(1900, function(){ if(layer.parentNode) layer.parentNode.removeChild(layer); });
+  }
+  function screenShake(){
+    var stageEl = document.getElementById("stage");
+    stageEl.classList.remove("shake"); void stageEl.offsetWidth; stageEl.classList.add("shake");
+    after(450, function(){ stageEl.classList.remove("shake"); });
+  }
+
+  /* ---- Golden Hour: a temporary double-score window, triggered occasionally for FOMO/urgency ---- */
+  function maybeStartGoldenHour(){
+    if(state.goldenHourRoundsLeft > 0) return;
+    if(Math.random() < 0.06){
+      state.goldenHourRoundsLeft = 3;
+      els.goldenHourBanner.classList.add("show");
+      showCaption("⚡ " + T("goldenHourStart"));
+      sfxCombo(); vib([20,20,20,20,20,20,100]);
+      after(2200, function(){ els.goldenHourBanner.classList.remove("show"); });
+    }
+  }
   var ARCHETYPES = ["sleep","phone","bag","map","earbud","book"];
 
   function buildPassengers(){
@@ -1218,6 +1321,9 @@
 
     state.passengers = list;
     state.leaverIdx = leaverIdx;
+    state.tellIndices = events.map(function(ev){ return ev.idx; }).filter(function(v,i,a){ return a.indexOf(v)===i; });
+    state.goldenRound = (state.mode !== "duel") && Math.random() < GOLDEN_CHANCE;
+    if(events.length) events[0].golden = state.goldenRound;
     return events;
   }
 
@@ -1281,12 +1387,14 @@
     if(confident){ btn.classList.add("confident"); seat.classList.add("confident"); }
   }
 
-  function flashTell(idx, duration){
+  function flashTell(idx, duration, golden){
     var badge = document.getElementById("badge-"+idx), seat = document.getElementById("seat-"+idx);
     if(!badge || !seat) return;
-    badge.classList.remove("show"); void badge.offsetWidth; badge.classList.add("show");
+    badge.classList.remove("show","golden"); void badge.offsetWidth; badge.classList.add("show");
+    if(golden){ badge.classList.add("golden"); badge.textContent = "✨"; } else { badge.textContent = "!"; }
     seat.classList.add("tell-active");
-    after(duration, function(){ badge.classList.remove("show"); seat.classList.remove("tell-active"); });
+    if(golden) seat.classList.add("golden-glow");
+    after(duration, function(){ badge.classList.remove("show"); seat.classList.remove("tell-active","golden-glow"); });
   }
 
   function showTutorialHint(idx){
@@ -1304,6 +1412,8 @@
     state.selectedIdx = -1; state.confident = false; state.selectionElapsed = null; state.lastRoundFailed = false;
     state.roundStartTime = Date.now();
     saveSession();
+    if(state.goldenHourRoundsLeft > 0){ els.goldenHourBanner.classList.add("show"); after(1200, function(){ els.goldenHourBanner.classList.remove("show"); }); }
+    else { maybeStartGoldenHour(); }
     var line = currentLine();
     var lang = langOf(line);
     var stationName = line.stations[state.stationIndex];
@@ -1323,6 +1433,11 @@
 
     var events = buildPassengers();
     renderBench();
+    if(comebackBonusPending && !state._comebackApplied){
+      state._comebackApplied = true;
+      state.score += 30;
+      after(400, function(){ showCaption(T("comebackToast")); });
+    }
     renderHUD();
 
     // rival NPC: sometimes a rival is also watching, and may claim the correct seat late in the round
@@ -1337,7 +1452,7 @@
       });
     }
 
-    events.forEach(function(ev){ after(ev.time, function(){ if(state.roundActive) flashTell(ev.idx, 900); }); });
+    events.forEach(function(ev){ after(ev.time, function(){ if(state.roundActive) flashTell(ev.idx, ev.golden ? 1400 : 900, ev.golden); }); });
 
     if(!tutorialSeen && state.mode === "campaign" && state.world === "seoul" && state.lineIndex === 0 && state.stationIndex === 0){
       var leaverTellTime = events[0].time;
@@ -1385,25 +1500,43 @@
         leaverSeat.classList.add("correct");
         var bonus = state.confident ? 2 : 1;
         var gained = 100 * bonus + state.combo * 10;
+        if(state.goldenRound) gained = Math.round(gained * 3);
+        if(state.goldenHourRoundsLeft > 0) gained = Math.round(gained * 2);
         state.score += gained; state.combo += 1; state.bestCombo = Math.max(state.bestCombo, state.combo);
         renderHUD();
-        showResult("success", T("hitResult", gained, state.confident), T("hitSub"));
+        showResult("success", state.goldenRound ? T("goldenResult", gained) : T("hitResult", gained, state.confident), state.goldenRound ? T("goldenSub") : T("hitSub"));
         sfxSuccess();
-        if(state.rival.active) vib([40,20,40]); else vib(50);
+        if(state.goldenRound){ sfxCombo(); vib([20,20,20,20,20,20,100]); burstConfetti(); screenShake(); }
+        else if(state.rival.active) vib([40,20,40]); else vib(50);
         var cap = comboCaption(state.combo);
-        if(cap) after(150, function(){ showCaption(cap); if(state.combo>=5){ sfxCombo(); vib(state.combo>=10 ? [15,15,15,15,15,15,80] : [20,30,20,30,50]); } });
+        if(cap) after(150, function(){
+          showCaption(cap);
+          if(state.combo>=5){ sfxCombo(); vib(state.combo>=10 ? [15,15,15,15,15,15,80] : [20,30,20,30,50]); }
+          if(state.combo>=10){ burstConfetti(); screenShake(); }
+        });
         state.lastRoundFailed = false;
         bumpStat("totalHits"); bumpStat("lifetimeScore", gained);
         if(state.confident) bumpStat("confidentWins");
         if(state.rival.active) bumpStat("rivalWins");
+        if(state.goldenHourRoundsLeft > 0) state.goldenHourRoundsLeft -= 1;
       } else {
+        if(state.goldenHourRoundsLeft > 0) state.goldenHourRoundsLeft -= 1;
         if(picked !== -1){ document.getElementById("seat-"+picked).classList.add("wrong-pick"); }
-        state.combo = 0; renderHUD();
-        var msg = rivalStole ? T("rivalSteal") : (picked === -1 ? T("missNone") : T("missWrong"));
-        var sub = rivalStole ? T("rivalStealSub") : (picked === -1 ? T("missNoneSub") : T("missWrongSub", leaver+1));
-        showResult("fail", msg, sub);
-        sfxFail(); vib([30,50,30]);
-        state.lastRoundFailed = true;
+        var shieldSaved = !state.comboShieldUsed && state.combo >= 3;
+        if(shieldSaved){
+          state.comboShieldUsed = true;
+          renderHUD();
+          showResult("shield", T("comboShield"), T("comboShieldSub"));
+          sfxCombo(); vib([20,20,20,60]);
+        } else {
+          state.combo = 0; renderHUD();
+          var wasNearMiss = !rivalStole && picked !== -1 && picked !== leaver && state.tellIndices && state.tellIndices.indexOf(picked) !== -1;
+          var msg = rivalStole ? T("rivalSteal") : (picked === -1 ? T("missNone") : (wasNearMiss ? T("nearMiss") : T("missWrong")));
+          var sub = rivalStole ? T("rivalStealSub") : (picked === -1 ? T("missNoneSub") : (wasNearMiss ? T("nearMissSub") : T("missWrongSub", leaver+1)));
+          showResult("fail", msg, sub);
+          sfxFail(); vib([30,50,30]);
+        }
+        state.lastRoundFailed = !shieldSaved;
 
         after(650, function(){
           var line = currentLine();
@@ -1473,10 +1606,10 @@
   }
 
   function showResult(type, text, sub){
-    var icon = type === "success" ? "✅ " : "❌ ";
-    els.resultBanner.className = "result-banner show " + type;
+    var icon = type === "success" ? "✅ " : (type === "shield" ? "🛡️ " : "❌ ");
+    els.resultBanner.className = "result-banner show " + (type === "shield" ? "success" : type);
     els.resultText.textContent = icon + text; els.resultSub.textContent = sub;
-    a11yCaption(type === "success" ? "✅ 정답 효과음" : "❌ 오답 효과음");
+    a11yCaption(type === "success" ? "✅ 정답 효과음" : (type === "shield" ? "🛡️ 보호막 효과음" : "❌ 오답 효과음"));
     after(1550, function(){ els.resultBanner.classList.remove("show"); });
   }
 
@@ -1602,6 +1735,7 @@
     clearTimers();
     var line = currentLine();
     var improved = updateBest("campaign", state.score, state.bestCombo);
+    if(improved){ after(300, function(){ burstConfetti(); screenShake(); }); }
     els.summaryTitle.textContent = T("campaignClear", line.name) + (improved ? " 🎉" : "");
     els.summarySubLine.textContent = improved ? T("newRecord") : "SOODAL METRO · " + line.stations.length + " STATIONS";
     els.summaryScore.textContent = String(state.score).padStart(4,"0");
@@ -1625,6 +1759,7 @@
     var modeKey = state.mode;
     if(modeKey === "speed") maxStat("speedBestRound", state.endless.roundNum);
     var improved = updateBest(modeKey, state.score, state.bestCombo);
+    if(improved){ after(300, function(){ burstConfetti(); screenShake(); }); }
     els.summaryTitle.textContent = (modeKey === "speed" ? T("speedEnd") : T("lastseatEnd")) + (improved ? " 🎉" : "");
     els.summarySubLine.textContent = improved ? T("newRecord") : "SEAT HUNTER RESULT";
     els.summaryScore.textContent = String(state.score).padStart(4,"0");
@@ -1655,6 +1790,7 @@
       todayRec[key] = { score: state.score, combo: state.bestCombo };
       saveDailyRecord(todayRec);
     }
+    if(improved){ after(300, function(){ burstConfetti(); screenShake(); }); }
     els.summaryTitle.textContent = (settings.uiLang==="en" ? "Daily Challenge complete!" : "일일 도전 완료!") + (improved ? " 🎉" : "");
     els.summarySubLine.textContent = todayKey();
     els.summaryScore.textContent = String(state.score).padStart(4,"0");
@@ -1675,13 +1811,14 @@
     disableDailySeed();
     state.mode = "campaign";
     state.lineIndex = 0; state.stationIndex = 0; state.score = 0; state.combo = 0; state.bestCombo = 0;
+    state.comboShieldUsed = false;
     startStation();
   }
   function startEndless(mode){
     if(mode === "daily") enableDailySeed(); else disableDailySeed();
     state.mode = mode;
     state.score = 0; state.combo = 0; state.bestCombo = 0; state.stationIndex = 0;
-    state.adReviveUsed = false;
+    state.adReviveUsed = false; state.comboShieldUsed = false;
     state.endless = { roundNum:0, deadline: mode==="lastseat" ? Date.now()+75000 : 0 };
     state.syntheticLine = syntheticLine(mode, 0);
     startStation();
@@ -1694,7 +1831,7 @@
     state.lineIndex = s.lineIndex||0; state.stationIndex = s.stationIndex||0;
     state.score = s.score||0; state.combo = s.combo||0; state.bestCombo = s.bestCombo||0;
     state.endless = s.endless || {roundNum:0, deadline:0};
-    state.adReviveUsed = s.adReviveUsed||false;
+    state.adReviveUsed = s.adReviveUsed||false; state.comboShieldUsed = s.comboShieldUsed||false;
     if(state.mode !== "campaign"){ state.syntheticLine = syntheticLine(state.mode, state.endless.roundNum); }
     ensureAudio(); startBGM();
     els.startScreen.classList.add("hidden");
@@ -1794,6 +1931,13 @@
       hitSub:"정확히 예측했습니다",
       missNone:"못 골랐다...", missNoneSub:"선택 시간이 지났습니다",
       missWrong:"자리 뺏김!", missWrongSub:function(n){ return "정답은 "+n+"번이었어요"; },
+      nearMiss:"아깝다! 신호에 속았어요", nearMissSub:"그 사람도 신호가 있었는데, 진짜는 따로 있었어요",
+      goldenResult:function(n){ return "✨ 골든 승객 대박! +"+n+" (×3)"; }, goldenSub:"오늘 운이 좋으시네요!",
+      streakToast:function(n){ return "🔥 "+n+"일 연속 방문!"; },
+      comebackToast:"다시 오신 걸 환영해요! +30",
+      nextThemeGoal:function(n){ return "다음 테마까지 "+n+"점!"; },
+      goldenHourStart:"황금 시간 시작! 다음 3라운드 2배 점수", goldenHourLabel:"⚡ 황금 시간! 2배 점수 ⚡",
+      comboShield:"콤보 보호! 실패해도 콤보가 유지돼요", comboShieldSub:"이번 판에 한 번만 발동돼요",
       rivalSteal:"라이벌이 채갔다!", rivalStealSub:"정답은 맞았지만 한 발 늦었어요",
       comboN:function(n){ return n+" COMBO"; }, comboPerfect:"PERFECT READ!", comboKing:"지하철 눈치왕!",
       campaignClear:function(name){ return name+" 완주!"; }, newRecord:"신기록 달성!",
@@ -1848,6 +1992,13 @@
       hitSub:"You predicted it correctly",
       missNone:"Too late...", missNoneSub:"Time's up",
       missWrong:"Seat stolen!", missWrongSub:function(n){ return "The answer was #"+n; },
+      nearMiss:"So close! Fooled by a fake signal", nearMissSub:"That one had a signal too, but the real one was elsewhere",
+      goldenResult:function(n){ return "✨ Golden passenger jackpot! +"+n+" (×3)"; }, goldenSub:"Lucky day!",
+      streakToast:function(n){ return "🔥 "+n+"-day streak!"; },
+      comebackToast:"Welcome back! +30",
+      nextThemeGoal:function(n){ return n+" points to next theme!"; },
+      goldenHourStart:"Golden Hour starts! Next 3 rounds ×2 score", goldenHourLabel:"⚡ Golden Hour! ×2 score ⚡",
+      comboShield:"Combo Shield! Your combo survives this miss", comboShieldSub:"Only triggers once per run",
       rivalSteal:"The rival got there first!", rivalStealSub:"You were right, but too slow",
       comboN:function(n){ return n+" COMBO"; }, comboPerfect:"PERFECT READ!", comboKing:"Subway Sixth Sense!",
       campaignClear:function(name){ return name+" cleared!"; }, newRecord:"New record!",
@@ -1932,6 +2083,7 @@
     els.eventIgnoreBtn.textContent = T("ignoreSeat");
     if(els.introOverlay) els.introOverlay.querySelector(".intro-skip").textContent = T("skipTap");
     if(els.tutorialHint) els.tutorialHint.querySelector("span").textContent = T("tutorialTap");
+    if(els.goldenHourText) els.goldenHourText.textContent = T("goldenHourLabel");
     renderThemeRow();
     renderCollection();
     renderAchievementsGrid();
@@ -1975,6 +2127,27 @@
     if(els.resumeBtn){
       var sess = loadSession();
       els.resumeBtn.style.display = sess ? "block" : "none";
+    }
+    if(els.streakBadge){
+      if(streakData.count >= 2){
+        els.streakBadge.textContent = T("streakToast", streakData.count);
+        els.streakBadge.style.display = "inline-block";
+      } else {
+        els.streakBadge.style.display = "none";
+      }
+    }
+    if(els.goalTeaser){
+      var nextTheme = null;
+      Object.keys(THEMES).forEach(function(k){
+        var t = THEMES[k];
+        if(t.unlock > (stats.lifetimeScore||0) && (nextTheme===null || t.unlock < nextTheme)){ nextTheme = t.unlock; }
+      });
+      if(nextTheme !== null){
+        els.goalTeaser.textContent = "🎯 " + T("nextThemeGoal", nextTheme - (stats.lifetimeScore||0));
+        els.goalTeaser.style.display = "block";
+      } else {
+        els.goalTeaser.style.display = "none";
+      }
     }
   }
 
@@ -2044,16 +2217,22 @@
   els.settingsBtn.addEventListener("click", function(){ applySettingsToUI(); els.settingsModal.classList.remove("hidden"); });
   els.settingsModalClose.addEventListener("click", function(){ els.settingsModal.classList.add("hidden"); });
   applySettingsToUI();
+  checkStreakOnBoot();
+  checkComebackOnBoot();
   applyLanguageEverywhere();
 
   /* ---- collection (도감) modal ---- */
   function renderCollection(){
+    var isEn = settings.uiLang === "en";
     var html = DEX_ORDER.map(function(a){
       var n = collection[a] || 0, seen = n > 0;
+      var rarity = RARITY[a] || "common";
+      var rarityLabel = rarity === "rare" ? (isEn ? "RARE" : "희귀") : (isEn ? "COMMON" : "일반");
       return '<div class="dex-item'+(seen?"":" locked")+'">'+
         '<div class="dex-icon">'+(seen ? DEX_ICON[a] : "❔")+'</div>'+
         '<div class="dex-name">'+(seen ? archTag(a) : T("locked"))+'</div>'+
-        '<div class="dex-count">'+(seen ? T("timesSeen", n) : T("notFound"))+'</div></div>';
+        '<div class="dex-count">'+(seen ? T("timesSeen", n) : T("notFound"))+'</div>'+
+        '<span class="rarity-tag rarity-'+rarity+'">'+rarityLabel+'</span></div>';
     }).join("");
     els.dexGrid.innerHTML = html;
   }
