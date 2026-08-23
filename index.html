@@ -60,6 +60,20 @@
   .caption-toast{ position:absolute; left:0; right:0; top:16%; text-align:center; z-index:5; pointer-events:none; }
 
   .confetti-layer{ position:absolute; inset:0; z-index:15; pointer-events:none; overflow:hidden; }
+
+  .score-popup{ position:absolute; z-index:20; font-family:'Black Han Sans', sans-serif; font-size:20px;
+    pointer-events:none; animation:scorePopupFloat 1.1s ease-out forwards; text-shadow:0 2px 4px rgba(0,0,0,.6); white-space:nowrap; }
+  @keyframes scorePopupFloat{
+    0%{ transform:translateY(0) scale(.6); opacity:0; }
+    15%{ transform:translateY(-10px) scale(1.15); opacity:1; }
+    100%{ transform:translateY(-72px) scale(1); opacity:0; }
+  }
+  .sparkle-particle{ position:absolute; z-index:20; font-size:14px; pointer-events:none;
+    animation:sparkleOut .85s ease-out forwards; }
+  @keyframes sparkleOut{
+    0%{ transform:translate(0,0) scale(.4); opacity:1; }
+    100%{ transform:translate(var(--dx),var(--dy)) scale(1); opacity:0; }
+  }
   .confetti-piece{ position:absolute; top:-10px; width:7px; height:11px; opacity:.95; animation:confettiFall 1.4s ease-in forwards; }
   @keyframes confettiFall{
     0%{ transform:translateY(0) rotate(0deg); opacity:1; }
@@ -80,6 +94,14 @@
   .rarity-common{ background:#3a4459; color:var(--steel-300); }
   .rarity-rare{ background:#2e5aa8; color:#cfe0ff; }
   .rarity-legendary{ background:linear-gradient(135deg,#ffd700,#ff8c00); color:#3a1c00; }
+
+  .speech-bubble{ position:absolute; top:-38px; left:50%; transform:translateX(-50%) scale(.4); z-index:6;
+    background:#fff; color:#1c1300; font-family:'Noto Sans KR', sans-serif; font-size:9.5px; font-weight:700;
+    padding:4px 8px; border-radius:10px; white-space:nowrap; opacity:0; pointer-events:none;
+    box-shadow:0 3px 8px rgba(0,0,0,.35); transition:opacity .2s, transform .2s; }
+  .speech-bubble::after{ content:""; position:absolute; bottom:-5px; left:50%; margin-left:-5px;
+    border:5px solid transparent; border-top-color:#fff; }
+  .speech-bubble.show{ opacity:1; transform:translateX(-50%) scale(1); }
   .caption-toast span{ display:inline-block; font-family:'Black Han Sans', sans-serif; font-size:26px; color:var(--signage-amber);
     text-shadow:0 3px 0 #000, 0 0 20px rgba(255,183,3,.5); opacity:0; transform:scale(.6); }
   .caption-toast span.show{ animation:captionPop .95s cubic-bezier(.2,1.4,.4,1) forwards; }
@@ -448,6 +470,7 @@
       <button class="mode-tab" data-mode="lastseat">마지막 자리</button>
       <button class="mode-tab" data-mode="duel">듀얼</button>
       <button class="mode-tab" data-mode="daily">🗓 일일 도전</button>
+      <button class="mode-tab" data-mode="chaos">🌀 카오스</button>
     </div>
     <div class="world-row" id="worldRow">
       <button class="world-pill selected" data-world="seoul">🇰🇷 서울</button>
@@ -596,6 +619,23 @@
   function sfxSuccess(){ tone(660,0,0.09,"square",0.09); tone(880,0.08,0.16,"square",0.09); }
   function sfxFail(){ tone(220,0,0.18,"sawtooth",0.08); tone(150,0.11,0.24,"sawtooth",0.07); }
   function sfxCombo(){ tone(880,0,0.06,"square",0.08); tone(1046,0.06,0.06,"square",0.08); tone(1318,0.12,0.12,"square",0.08); }
+  function sfxScorePopup(){ tone(1200,0,0.05,"sine",0.06); tone(1500,0.05,0.08,"sine",0.06); }
+  function sfxGoldenSparkle(){ [1046,1318,1568,2093].forEach(function(f,i){ tone(f, i*0.05, 0.13, "sine", 0.055); }); }
+  function sfxVillainFlee(){
+    if(!settings.sound) return;
+    var ctx = ensureAudio(); if(!ctx) return;
+    try{
+      var osc = ctx.createOscillator(), gain = ctx.createGain();
+      osc.type = "sawtooth";
+      osc.frequency.setValueAtTime(900, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(120, ctx.currentTime+0.4);
+      gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+      gain.gain.linearRampToValueAtTime(0.07, ctx.currentTime+0.03);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime+0.42);
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.start(); osc.stop(ctx.currentTime+0.45);
+    }catch(e){}
+  }
 
   /* ---- optional real audio file playback: if you drop actual recorded clips next to index.html
      (e.g. sfx/door-chime.mp3), point REAL_SFX at them and they'll be used automatically instead of
@@ -660,7 +700,8 @@
     if(!settings.sound) return;
     var ctx = ensureAudio(); if(!ctx) return;
     try{
-      // a two-note bell chime with overtones layered in, like a real subway door bell
+      // a two-note bell chime with overtones layered in, like a real subway door bell,
+      // routed through a bandpass "PA speaker" filter so it sounds like it's coming through the car's speaker
       [ [784, 0, 0.30], [988, 0.16, 0.34] ].forEach(function(note){
         var freq = note[0], start = note[1], dur = note[2];
         var partials = [ [1, 0.09], [2.01, 0.03], [3.0, 0.015] ];
@@ -670,8 +711,10 @@
           gain.gain.setValueAtTime(0.0001, ctx.currentTime+start);
           gain.gain.linearRampToValueAtTime(p[1], ctx.currentTime+start+0.015);
           gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime+start+dur);
-          osc.connect(gain);
-          connectWithReverb(gain, ctx, 0.25);
+          var paFilter = ctx.createBiquadFilter();
+          paFilter.type = "bandpass"; paFilter.frequency.value = 1400; paFilter.Q.value = 0.9;
+          osc.connect(gain); gain.connect(paFilter);
+          connectWithReverb(paFilter, ctx, 0.25);
           osc.start(ctx.currentTime+start); osc.stop(ctx.currentTime+start+dur+0.05);
         });
       });
@@ -1408,6 +1451,12 @@
   function currentLine(){ return state.mode === "campaign" ? CAMPAIGN_WORLDS[state.world][state.lineIndex] : state.syntheticLine; }
   function syntheticLine(mode, roundNum){
     if(mode === "daily") return dailyLine(roundNum);
+    if(mode === "chaos"){
+      return { name:"카오스 모드", color:"#ff3860", stations:["혼돈 "+(roundNum+1)],
+        count: clamp(6 + Math.floor(roundNum/3), 6, 7),
+        observeMs: clamp(2200 - roundNum*60, 1200, 2200),
+        fakeLevel: 3 };
+    }
     if(mode === "speed"){
       return { name:"스피드 모드", color:"#ef5b4a", stations:["구간 "+(roundNum+1)],
         count: clamp(5 + Math.floor(roundNum/4), 5, 7),
@@ -1486,6 +1535,44 @@
     stageEl.classList.remove("shake"); void stageEl.offsetWidth; stageEl.classList.add("shake");
     after(450, function(){ stageEl.classList.remove("shake"); });
   }
+  function showScorePopup(seatIdx, text, color){
+    var seat = document.getElementById("seat-"+seatIdx);
+    var carBody = document.querySelector(".car-body");
+    if(!seat || !carBody) return;
+    var popup = document.createElement("div");
+    popup.className = "score-popup";
+    popup.textContent = text;
+    popup.style.color = color || "#ffb703";
+    var seatRect = seat.getBoundingClientRect();
+    var carRect = carBody.getBoundingClientRect();
+    popup.style.left = (seatRect.left - carRect.left + seatRect.width/2 - 20) + "px";
+    popup.style.top = (seatRect.top - carRect.top) + "px";
+    carBody.appendChild(popup);
+    sfxScorePopup();
+    after(1200, function(){ if(popup.parentNode) popup.parentNode.removeChild(popup); });
+  }
+  function burstSparkle(seatIdx){
+    var seat = document.getElementById("seat-"+seatIdx);
+    var carBody = document.querySelector(".car-body");
+    if(!seat || !carBody) return;
+    var seatRect = seat.getBoundingClientRect();
+    var carRect = carBody.getBoundingClientRect();
+    var cx = seatRect.left - carRect.left + seatRect.width/2;
+    var cy = seatRect.top - carRect.top + seatRect.height/2;
+    for(var i=0;i<10;i++){
+      var star = document.createElement("div");
+      star.className = "sparkle-particle";
+      star.textContent = "✨";
+      var angle = (Math.PI*2/10)*i;
+      var dist = 30 + Math.random()*20;
+      star.style.left = cx + "px"; star.style.top = cy + "px";
+      star.style.setProperty("--dx", (Math.cos(angle)*dist)+"px");
+      star.style.setProperty("--dy", (Math.sin(angle)*dist)+"px");
+      carBody.appendChild(star);
+      (function(el){ after(900, function(){ if(el.parentNode) el.parentNode.removeChild(el); }); })(star);
+    }
+    sfxGoldenSparkle();
+  }
 
   /* ---- Golden Hour: a temporary double-score window, triggered occasionally for FOMO/urgency ---- */
   function maybeStartGoldenHour(){
@@ -1551,7 +1638,7 @@
     state.passengers = list;
     state.leaverIdx = leaverIdx;
     state.tellIndices = events.map(function(ev){ return ev.idx; }).filter(function(v,i,a){ return a.indexOf(v)===i; });
-    state.goldenRound = (state.mode !== "duel") && Math.random() < GOLDEN_CHANCE;
+    state.goldenRound = (state.mode !== "duel") && Math.random() < (state.mode === "chaos" ? GOLDEN_CHANCE*1.8 : GOLDEN_CHANCE);
     if(events.length) events[0].golden = state.goldenRound;
     if(soodalSlot >= 0){
       bumpStat("soodalCameos");
@@ -1575,13 +1662,16 @@
       var rivalBadge = document.createElement("div");
       rivalBadge.className = "rival-badge"; rivalBadge.id = "rival-"+idx; rivalBadge.textContent = "🏃";
 
+      var speech = document.createElement("div");
+      speech.className = "speech-bubble"; speech.id = "speech-"+idx;
+
       var wrap = document.createElement("div");
       wrap.className = "sprite-wrap"; wrap.id = "sprite-"+idx;
       wrap.innerHTML = spriteSVG(p.archetype, p.colors, line.color, Math.random()<0.25, p.bodyType, p.season, p.hairStyle, p.hasGlasses);
 
       var cushion = document.createElement("div"); cushion.className = "seat-cushion";
 
-      seat.appendChild(badge); seat.appendChild(rivalBadge); seat.appendChild(wrap); seat.appendChild(cushion);
+      seat.appendChild(badge); seat.appendChild(rivalBadge); seat.appendChild(speech); seat.appendChild(wrap); seat.appendChild(cushion);
       els.bench.appendChild(seat);
 
       var btn = document.createElement("div");
@@ -1590,7 +1680,30 @@
       els.selectorRow.appendChild(btn);
       attachPointerHandlers(btn, idx);
     });
+    maybeShowSpeechBubble();
   }
+
+  var SPEECH_LINES = {
+    ko: ["아 배고파...", "다음 정거장 맞나?", "폰 배터리 없네", "졸려 죽겠다", "오늘따라 사람 많네",
+         "역이 왜 이렇게 안 와", "커피 마시고 싶다", "발 아파 죽겠어", "집에 가고 싶다", "에어컨 너무 세다"],
+    en: ["So hungry...", "Is this my stop?", "Phone's dying", "So sleepy today", "So crowded today",
+         "Why is this taking forever", "I need coffee", "My feet hurt", "I just want to go home", "AC is way too cold"]
+  };
+  function maybeShowSpeechBubble(){
+    if(Math.random() > 0.15) return;
+    var n = state.passengers.length;
+    if(!n) return;
+    var idx = Math.floor(Math.random()*n);
+    var el = document.getElementById("speech-"+idx);
+    if(!el) return;
+    var lines = SPEECH_LINES[settings.uiLang === "en" ? "en" : "ko"];
+    el.textContent = lines[Math.floor(Math.random()*lines.length)];
+    after(rand(400, 1600), function(){
+      el.classList.add("show");
+      after(1800, function(){ el.classList.remove("show"); });
+    });
+  }
+
 
   function attachPointerHandlers(btn, idx){
     var downTime = 0, chargeTimeout = null;
@@ -1674,7 +1787,7 @@
     renderHUD();
 
     // rival NPC: sometimes a rival is also watching, and may claim the correct seat late in the round
-    var rivalChance = line.fakeLevel===0 ? 0.15 : line.fakeLevel===1 ? 0.32 : 0.48;
+    var rivalChance = state.mode === "chaos" ? 0.7 : (line.fakeLevel===0 ? 0.15 : line.fakeLevel===1 ? 0.32 : 0.48);
     state.rival = { active: Math.random() < rivalChance, claimTime: rand(line.observeMs*0.62, line.observeMs*0.92), revealed:false };
     if(state.rival.active){
       after(state.rival.claimTime, function(){
@@ -1738,8 +1851,9 @@
         state.score += gained; state.combo += 1; state.bestCombo = Math.max(state.bestCombo, state.combo);
         renderHUD();
         showResult("success", state.goldenRound ? T("goldenResult", gained) : T("hitResult", gained, state.confident), state.goldenRound ? T("goldenSub") : T("hitSub"));
+        showScorePopup(leaver, "+"+gained, state.goldenRound ? "#ffd700" : "#12b45c");
         sfxSuccess();
-        if(state.goldenRound){ sfxCombo(); vib([20,20,20,20,20,20,100]); burstConfetti(); screenShake(); }
+        if(state.goldenRound){ sfxCombo(); vib([20,20,20,20,20,20,100]); burstConfetti(); screenShake(); burstSparkle(leaver); }
         else if(state.rival.active) vib([40,20,40]); else vib(50);
         var cap = comboCaption(state.combo);
         if(cap) after(150, function(){
@@ -1939,7 +2053,7 @@
         els.villainCard.classList.add("fleeing");
         state.score += 80; renderHUD();
         showResult("success", T("villainWin"), T("villainWinSub"));
-        sfxSuccess(); vib([25,25,25,25,60]);
+        sfxVillainFlee(); vib([25,25,25,25,60]);
         bumpStat("villainWins"); bumpStat("lifetimeScore", 80);
         state.sessionFlags.villainWin = true;
         after(650, function(){ els.villainModal.classList.add("hidden"); proceedFn(); });
@@ -2004,7 +2118,8 @@
     var improved = updateBest(modeKey, state.score, state.bestCombo);
     if(improved){ after(300, function(){ burstConfetti(); screenShake(); }); }
     announceMissions(newMissions);
-    els.summaryTitle.textContent = (modeKey === "speed" ? T("speedEnd") : T("lastseatEnd")) + (improved ? " 🎉" : "");
+    var endTitleKey = modeKey === "speed" ? "speedEnd" : modeKey === "duel" ? "duelEnd" : modeKey === "chaos" ? "chaosEnd" : "lastseatEnd";
+    els.summaryTitle.textContent = T(endTitleKey) + (improved ? " 🎉" : "");
     els.summarySubLine.textContent = improved ? T("newRecord") : "SEAT HUNTER RESULT";
     els.summaryScore.textContent = String(state.score).padStart(4,"0");
     var pct = clamp(Math.round(100 - state.score/38), 1, 97);
@@ -2015,7 +2130,7 @@
     els.restartBtn.textContent = T("retry");
     els.shareBtn.textContent = T("saveShare");
     if(els.adReviveBtn){
-      var canRevive = (modeKey === "speed" || modeKey === "duel") && !state.adReviveUsed;
+      var canRevive = (modeKey === "speed" || modeKey === "duel" || modeKey === "chaos") && !state.adReviveUsed;
       els.adReviveBtn.style.display = canRevive ? "block" : "none";
       els.adReviveBtn.textContent = T("adRevive");
     }
@@ -2194,7 +2309,8 @@
       nextLine:function(name){ return "다음 노선 타기 — "+name; },
       restartAll:"처음부터 다시", restartClear:"처음부터 다시 (게임 클리어!)", retry:"다시 도전",
       saveShare:"📷 결과 이미지 저장", adRevive:"📺 광고 보고 부활하기",
-      speedEnd:"스피드 모드 종료!", lastseatEnd:"마지막 자리 종료!",
+      speedEnd:"스피드 모드 종료!", lastseatEnd:"마지막 자리 종료!", duelEnd:"듀얼 종료!", chaosEnd:"카오스 모드 종료!",
+      modeChaos:"🌀 카오스", tChaos:"관찰 시간은 짧고, 라이벌은 항상 있고, 골든 확률도 높다.<br>고인물만 살아남는 극한 서바이벌.",
       yieldSeat:"자리 양보하기", ignoreSeat:"모른 척하기",
       yieldedResult:"자리를 양보했습니다 +50", yieldedSub:"훈훈한 지하철",
       ignoredResult:"못 본 척했다...", ignoredSub:"콤보가 초기화됐어요",
@@ -2255,7 +2371,8 @@
       nextLine:function(name){ return "Next line — "+name; },
       restartAll:"Start over", restartClear:"Start over (Cleared!)", retry:"Try again",
       saveShare:"📷 Save result image", adRevive:"📺 Watch ad to revive",
-      speedEnd:"Speed mode over!", lastseatEnd:"Last Seat over!",
+      speedEnd:"Speed mode over!", lastseatEnd:"Last Seat over!", duelEnd:"Duel over!", chaosEnd:"Chaos mode over!",
+      modeChaos:"🌀 Chaos", tChaos:"Short timers, a rival every round, more golden odds.<br>Extreme survival for veterans only.",
       yieldSeat:"Offer the seat", ignoreSeat:"Pretend not to notice",
       yieldedResult:"You offered your seat +50", yieldedSub:"A kind subway moment",
       ignoredResult:"You looked away...", ignoredSub:"Combo reset",
@@ -2299,6 +2416,7 @@
     document.querySelector('.mode-tab[data-mode="lastseat"]').textContent = T("modeLastseat");
     document.querySelector('.mode-tab[data-mode="duel"]').textContent = T("modeDuel");
     document.querySelector('.mode-tab[data-mode="daily"]').textContent = T("modeDaily");
+    document.querySelector('.mode-tab[data-mode="chaos"]').textContent = T("modeChaos");
     if(els.resumeBtn) els.resumeBtn.textContent = T("resumeBtn");
     var wp = document.querySelector('.world-pill[data-world="seoul"]'); if(wp) wp.textContent = "🇰🇷 " + T("worldSeoul");
     wp = document.querySelector('.world-pill[data-world="tokyo"]'); if(wp) wp.textContent = "🇯🇵 " + T("worldTokyo");
@@ -2338,8 +2456,8 @@
     refreshStartScreen();
   }
 
-  var MODE_TAGLINE_KEY = { campaign:"tCampaign", speed:"tSpeed", lastseat:"tLastseat", duel:"tDuel", daily:"tDaily" };
-  var MODE_BEST_KEY = { campaign:"campaign", speed:"speed", lastseat:"lastseat", duel:"duel" };
+  var MODE_TAGLINE_KEY = { campaign:"tCampaign", speed:"tSpeed", lastseat:"tLastseat", duel:"tDuel", daily:"tDaily", chaos:"tChaos" };
+  var MODE_BEST_KEY = { campaign:"campaign", speed:"speed", lastseat:"lastseat", duel:"duel", chaos:"chaos" };
   function renderTrendGraph(){
     if(!els.trendGraph) return;
     var relevant = scoreHistory.filter(function(h){ return h.mode === state.mode; }).slice(-10);
