@@ -42,6 +42,8 @@
     flex:1; text-align:center; animation:ledFlicker 2.6s infinite; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   @keyframes ledFlicker{ 0%,92%,100%{opacity:1;} 94%{opacity:.72;} 96%{opacity:1;} }
   .led-dots{ font-size:10px; color:#3a4356; letter-spacing:3px; }
+  .pause-btn{ background:none; border:1px solid #3a4459; color:var(--steel-300); border-radius:6px;
+    font-size:13px; padding:2px 8px; cursor:pointer; flex-shrink:0; }
   .led-sub{ margin-top:3px; font-size:10px; color:#6d7893; letter-spacing:1px; text-align:center; min-height:13px; }
   .station-progress{ display:flex; gap:6px; justify-content:center; margin-top:5px; }
   .station-progress span{ width:6px; height:6px; border-radius:50%; background:#2b3446; transition:background .3s, transform .3s; }
@@ -368,13 +370,25 @@
   .bottom-hint{ font-size:10.5px; color:var(--steel-400); }
   .bottom-hint b{ color:var(--steel-300); }
 
+  .rotate-lock{ display:none; position:fixed; inset:0; z-index:9999; background:#05070b;
+    flex-direction:column; align-items:center; justify-content:center; text-align:center;
+    color:var(--paper); font-family:'Noto Sans KR', sans-serif; font-size:15px; padding:20px; }
+  .rotate-lock-icon{ font-size:44px; margin-bottom:14px; animation:rotateHint 1.6s ease-in-out infinite; }
+  @keyframes rotateHint{ 0%,100%{ transform:rotate(0deg); } 50%{ transform:rotate(90deg); } }
+  @media (orientation: landscape){
+    .rotate-lock{ display:flex; }
+  }
+
   .overlay{ position:absolute; inset:0; z-index:20; background:linear-gradient(180deg, #0c1017 0%, #131a26 100%);
-    display:flex; flex-direction:column; align-items:center; justify-content:center; padding:32px 26px; text-align:center; }
+    display:flex; flex-direction:column; align-items:center; justify-content:flex-start; padding:32px 26px calc(32px + env(safe-area-inset-bottom)); text-align:center;
+    overflow-y:auto; -webkit-overflow-scrolling:touch; }
   .overlay.hidden{ display:none; }
   .game-title{ font-family:'Black Han Sans', sans-serif; font-size:44px; color:var(--signage-amber); text-shadow:0 4px 0 #000; margin:0; letter-spacing:1px; }
   .game-subtitle{ font-family:'DotGothic16', monospace; color:var(--steel-300); font-size:13px; letter-spacing:3px; margin-top:6px; }
   .tagline{ margin:18px 0 22px; color:var(--steel-300); font-size:14px; line-height:1.6; }
   .rule-list{ list-style:none; padding:0; margin:0 0 26px; width:100%; max-width:300px; }
+  .how-to-link{ background:none; border:none; color:var(--steel-400); font-size:12px; text-decoration:underline;
+    margin:0 0 18px; padding:6px; cursor:pointer; }
   .rule-list li{ display:flex; gap:10px; align-items:flex-start; text-align:left; font-size:13px; color:var(--paper);
     background:var(--car-750); border:1px solid #3a4459; border-radius:10px; padding:10px 12px; margin-bottom:8px; }
   .rule-list li span.emoji{ font-size:18px; }
@@ -394,6 +408,11 @@
 </head>
 <body>
 
+<div class="rotate-lock" id="rotateLock">
+  <div class="rotate-lock-icon">📱</div>
+  <div id="rotateLockText">이 게임은 세로 모드에서만 플레이할 수 있어요.<br>기기를 세로로 돌려주세요.</div>
+</div>
+
 <div id="stage">
   <div class="tunnel-window"></div>
   <div class="intro-overlay hidden" id="introOverlay">
@@ -406,10 +425,18 @@
     <div class="led-top-row">
       <span class="led-line-badge" id="lineBadge">2호선</span>
       <span class="led-station" id="ledStation">이번 역은 강남</span>
-      <span class="led-dots">•••</span>
+      <button class="pause-btn" id="pauseBtn">⏸</button>
     </div>
     <div class="led-sub" id="ledSub">문이 열립니다</div>
     <div class="station-progress" id="stationProgress"></div>
+  </div>
+
+  <div class="modal-backdrop hidden" id="pauseModal">
+    <div class="modal-card">
+      <h3 id="pauseTitle">일시정지</h3>
+      <button class="btn-primary" id="pauseResumeBtn" style="margin-top:10px;">이어하기</button>
+      <button class="btn-secondary" id="pauseExitBtn">메인 화면으로 나가기</button>
+    </div>
   </div>
 
   <div class="hud">
@@ -487,11 +514,12 @@
     <div class="goal-teaser" id="goalTeaser" style="display:none;"></div>
     <div class="missions-panel" id="missionsPanel"></div>
     <svg id="trendGraph" viewBox="0 0 200 40" style="width:180px; height:36px; margin-bottom:14px; display:none;"></svg>
-    <ul class="rule-list">
+    <ul class="rule-list" id="ruleList">
       <li><span class="emoji">👀</span> <span id="ruleText1">승객들을 관찰하고, 아래 버튼으로 곧 내릴 것 같은 사람을 고르세요.</span></li>
       <li><span class="emoji">❗</span> <span id="ruleText2">신호가 뜨면 표정이 놀란 얼굴로 바뀝니다 — 진짜는 딱 1번뿐이에요.</span></li>
       <li><span class="emoji">🏃</span> <span id="ruleText3">가끔 라이벌이 같은 사람을 노려요 — 먼저 골라야 자리를 지킵니다.</span></li>
     </ul>
+    <button class="how-to-link" id="howToLink" style="display:none;">❓ 게임 방법 보기</button>
     <button class="btn-primary" id="startBtn">승차하기</button>
     <button class="btn-secondary" id="resumeBtn" style="display:none;">▶ 이어하기</button>
   </div>
@@ -525,19 +553,20 @@
       <div class="setting-row"><span>색약 모드</span><div class="toggle-switch" id="colorblindToggle"></div></div>
       <div class="setting-row"><span>효과음 자막</span><div class="toggle-switch" id="captionsToggle"></div></div>
       <div style="margin-top:10px; text-align:left;">
-        <div style="font-size:12px; color:var(--steel-400); margin-bottom:6px;">배경음(지하철 소음) 음량</div>
+        <div style="font-size:12px; color:var(--steel-400); margin-bottom:6px;" id="bgmLabelText">배경음(지하철 소음) 음량</div>
         <input type="range" id="bgmSlider" min="0" max="100" value="50" style="width:100%;">
       </div>
       <div style="margin-top:12px; text-align:left;">
-        <div style="font-size:12px; color:var(--steel-400); margin-bottom:6px;">글씨 크기</div>
+        <div style="font-size:12px; color:var(--steel-400); margin-bottom:6px;" id="textSizeLabelText">글씨 크기</div>
         <div class="scale-row">
           <button class="scale-btn selected" data-scale="normal">보통</button>
           <button class="scale-btn" data-scale="large">크게</button>
         </div>
       </div>
       <div style="margin-top:12px; text-align:left;">
-        <div style="font-size:12px; color:var(--steel-400); margin-bottom:6px;">차량 테마</div>
+        <div style="font-size:12px; color:var(--steel-400); margin-bottom:6px;" id="themeLabelText">차량 테마</div>
         <div class="scale-row" id="themeRow"></div>
+        <div class="theme-hint" id="themeHint" style="font-size:10px; color:var(--steel-400); margin-top:5px;"></div>
       </div>
       <button class="modal-close" id="settingsModalClose">닫기</button>
     </div>
@@ -1036,9 +1065,9 @@
 
   /* ============ CAR THEMES ============ */
   var THEMES = {
-    default: { name:"기본", unlock:0, colors:{ car750:"#293244", car700:"#313c50", seatAmber:"#d98a3d", seatAmberDark:"#a96826" } },
-    night:   { name:"보라매트로 야간", unlock:1000, colors:{ car750:"#2a2440", car700:"#332b52", seatAmber:"#8b5cf6", seatAmberDark:"#6d3fd1" } },
-    autumn:  { name:"단풍 열차", unlock:3000, colors:{ car750:"#3a2a20", car700:"#4a3528", seatAmber:"#e0793a", seatAmberDark:"#b8541f" } }
+    default: { name:"기본", nameEn:"Default", unlock:0, colors:{ car750:"#293244", car700:"#313c50", seatAmber:"#d98a3d", seatAmberDark:"#a96826" } },
+    night:   { name:"보라매트로 야간", nameEn:"Purple Night Metro", unlock:1000, colors:{ car750:"#2a2440", car700:"#332b52", seatAmber:"#8b5cf6", seatAmberDark:"#6d3fd1" } },
+    autumn:  { name:"단풍 열차", nameEn:"Autumn Train", unlock:3000, colors:{ car750:"#3a2a20", car700:"#4a3528", seatAmber:"#e0793a", seatAmberDark:"#b8541f" } }
   };
   function applyTheme(themeKey){
     var t = THEMES[themeKey] || THEMES.default;
@@ -1406,8 +1435,10 @@
    "collectionModal","collectionModalClose","dexGrid","devModal","devModalClose",
    "achievementsBtn","achievementsModal","achievementsModalClose","achGrid",
    "captionsToggle","bgmSlider","themeRow","introOverlay","a11yCaption",
+   "bgmLabelText","textSizeLabelText","themeLabelText","themeHint",
    "selectorLabel","ruleText1","ruleText2","ruleText3","resumeBtn","trendGraph","streakBadge","goalTeaser",
-   "levelBadge","missionsPanel",
+   "levelBadge","missionsPanel","ruleList","howToLink","rotateLockText",
+   "pauseBtn","pauseModal","pauseTitle","pauseResumeBtn","pauseExitBtn",
    "goldenHourBanner","goldenHourText",
    "specialEventModal","eventIcon","eventText","eventYieldBtn","eventIgnoreBtn",
    "villainModal","villainCard","villainSprite","villainTapTarget","villainTapCount","villainTitle","villainHint",
@@ -1707,9 +1738,9 @@
 
   function attachPointerHandlers(btn, idx){
     var downTime = 0, chargeTimeout = null;
-    function down(){ if(!state.roundActive) return; downTime = Date.now(); btn.classList.remove("charging");
+    function down(){ if(!state.roundActive || isPaused) return; downTime = Date.now(); btn.classList.remove("charging");
       chargeTimeout = setTimeout(function(){ btn.classList.add("charging"); }, 380); }
-    function up(){ if(!state.roundActive) return; clearTimeout(chargeTimeout);
+    function up(){ if(!state.roundActive || isPaused) return; clearTimeout(chargeTimeout);
       var held = Date.now() - downTime; selectPassenger(idx, held >= 420); }
     function cancel(){ clearTimeout(chargeTimeout); }
     btn.addEventListener("pointerdown", down);
@@ -1821,8 +1852,11 @@
     after(line.observeMs, doorsOpen);
   }
 
+  var isPaused = false;
   function doorsOpen(){
+    if(isPaused){ after(300, doorsOpen); return; }
     state.roundActive = false;
+    markRulesSeen();
     var line = currentLine();
     var lang = langOf(line);
     var stationName = line.stations[state.stationIndex];
@@ -2006,6 +2040,7 @@
     els.specialEventModal.querySelector("h3").textContent = T("eventTitle");
     els.eventYieldBtn.textContent = T("yieldSeat");
     els.eventIgnoreBtn.textContent = T("ignoreSeat");
+    if(els.tutorialHint) els.tutorialHint.classList.remove("show");
     els.specialEventModal.classList.remove("hidden");
     var resolved = false;
     function resolve(yielded){
@@ -2043,6 +2078,7 @@
 
     var taps = 0, need = 4, done = false;
     els.villainTapCount.textContent = taps + " / " + need;
+    if(els.tutorialHint) els.tutorialHint.classList.remove("show");
     els.villainModal.classList.remove("hidden");
 
     function finish(success){
@@ -2322,6 +2358,7 @@
       settingsTitle:"설정", soundLabel:"사운드", vibrateLabel:"진동", colorblindLabel:"색약 모드",
       captionsLabel:"효과음 자막", bgmLabel:"배경음(지하철 소음) 음량", textSizeLabel:"글씨 크기",
       sizeNormal:"보통", sizeLarge:"크게", themeLabel:"차량 테마", close:"닫기",
+      rotateLock:"이 게임은 세로 모드에서만 플레이할 수 있어요.<br>기기를 세로로 돌려주세요.",
       dexTitle:"승객 도감", achTitle:"업적", locked:"???", notFound:"미발견",
       timesSeen:function(n){ return n+"회 목격"; }, notAchieved:"미달성",
       devTitle:"개발자",
@@ -2384,6 +2421,7 @@
       settingsTitle:"Settings", soundLabel:"Sound", vibrateLabel:"Vibration", colorblindLabel:"Colorblind mode",
       captionsLabel:"Sound captions", bgmLabel:"Background (subway) volume", textSizeLabel:"Text size",
       sizeNormal:"Normal", sizeLarge:"Large", themeLabel:"Car theme", close:"Close",
+      rotateLock:"This game only works in portrait mode.<br>Please rotate your device.",
       dexTitle:"Passenger Dex", achTitle:"Achievements", locked:"???", notFound:"Not found",
       timesSeen:function(n){ return "Seen "+n+"x"; }, notAchieved:"Not yet",
       devTitle:"Developer",
@@ -2407,10 +2445,15 @@
   function archTag(a){ return settings.uiLang === "en" ? ARCH_TAG_EN[a] : ARCH_TAG[a]; }
 
   function applyLanguageEverywhere(){
+    document.getElementById("langBtn").textContent = "🌐 " + (settings.uiLang==="en" ? "Language" : "언어 (Language)");
     document.getElementById("settingsBtn").textContent = "⚙️ " + T("settings");
     document.getElementById("collectionBtn").textContent = "📖 " + T("collection");
     document.getElementById("achievementsBtn").textContent = "🏆 " + T("achievements");
     document.getElementById("devBtn").textContent = "👨‍💻 " + T("developer");
+    if(els.bgmLabelText) els.bgmLabelText.textContent = T("bgmLabel");
+    if(els.textSizeLabelText) els.textSizeLabelText.textContent = T("textSizeLabel");
+    if(els.themeLabelText) els.themeLabelText.textContent = T("themeLabel");
+    if(els.rotateLockText) els.rotateLockText.innerHTML = T("rotateLock");
     document.querySelector('.mode-tab[data-mode="campaign"]').textContent = T("modeCampaign");
     document.querySelector('.mode-tab[data-mode="speed"]').textContent = T("modeSpeed");
     document.querySelector('.mode-tab[data-mode="lastseat"]').textContent = T("modeLastseat");
@@ -2479,8 +2522,23 @@
       }).join("");
     els.trendGraph.style.display = "block";
   }
+  var RULES_SEEN_KEY = "seatHunterRulesSeen_v1";
+  function hasSeenRules(){ try{ return localStorage.getItem(RULES_SEEN_KEY) === "1"; }catch(e){ return false; } }
+  function markRulesSeen(){ try{ localStorage.setItem(RULES_SEEN_KEY, "1"); }catch(e){} }
+  function applyRuleListCollapse(){
+    if(!els.ruleList || !els.howToLink) return;
+    if(hasSeenRules() && els.ruleList.style.display !== "none"){
+      els.ruleList.style.display = "none";
+      els.howToLink.style.display = "block";
+      els.howToLink.textContent = "❓ " + (settings.uiLang==="en" ? "How to play" : "게임 방법 보기");
+    } else if(!hasSeenRules()){
+      els.ruleList.style.display = "";
+      els.howToLink.style.display = "none";
+    }
+  }
   function refreshStartScreen(){
     els.modeTagline.innerHTML = T(MODE_TAGLINE_KEY[state.mode] || "tCampaign");
+    applyRuleListCollapse();
     if(state.mode === "daily"){
       var rec = loadDailyRecord()[todayKey()];
       els.bestRecord.textContent = rec ? T("bestRecord", rec.score, rec.combo) + " (" + todayKey() + ")" : T("noRecord") + " · " + todayKey();
@@ -2551,21 +2609,27 @@
   /* ---- settings modal ---- */
   function renderThemeRow(){
     els.themeRow.innerHTML = "";
+    var isEn = settings.uiLang === "en";
+    var hints = [];
     Object.keys(THEMES).forEach(function(key){
       var t = THEMES[key];
+      var name = isEn ? t.nameEn : t.name;
       var unlocked = (stats.lifetimeScore||0) >= t.unlock;
       var btn = document.createElement("button");
       btn.className = "scale-btn" + (settings.theme === key ? " selected" : "");
-      btn.textContent = unlocked ? t.name : ("🔒 " + t.name);
+      btn.textContent = unlocked ? name : ("🔒 " + name);
       if(unlocked){
         btn.addEventListener("click", function(){
           settings.theme = key; saveSettings(); applyTheme(key); renderThemeRow();
         });
       } else {
         btn.disabled = true; btn.style.opacity = ".5";
+        var remain = t.unlock - (stats.lifetimeScore||0);
+        hints.push(isEn ? (name+": "+remain+" pts to unlock") : (name+": "+remain+"점 남음"));
       }
       els.themeRow.appendChild(btn);
     });
+    if(els.themeHint) els.themeHint.textContent = hints.join(" · ");
   }
   function applySettingsToUI(){
     var stageEl = document.getElementById("stage");
@@ -2670,6 +2734,34 @@
     });
   });
   els.resumeBtn.addEventListener("click", resumeGame);
+  els.howToLink.addEventListener("click", function(){
+    var showing = els.ruleList.style.display !== "none";
+    els.ruleList.style.display = showing ? "none" : "";
+    els.howToLink.textContent = (showing ? "❓ " : "✕ ") + (settings.uiLang==="en" ? "How to play" : "게임 방법 보기");
+  });
+  function openPauseModal(){
+    if(els.startScreen && !els.startScreen.classList.contains("hidden")) return; // nothing to pause on the menu
+    isPaused = true;
+    if(els.timerFill) els.timerFill.style.animationPlayState = "paused";
+    els.pauseTitle.textContent = settings.uiLang==="en" ? "Paused" : "일시정지";
+    els.pauseResumeBtn.textContent = settings.uiLang==="en" ? "Resume" : "이어하기";
+    els.pauseExitBtn.textContent = settings.uiLang==="en" ? "Exit to menu" : "메인 화면으로 나가기";
+    els.pauseModal.classList.remove("hidden");
+  }
+  function closePauseModal(){
+    isPaused = false;
+    if(els.timerFill) els.timerFill.style.animationPlayState = "running";
+    els.pauseModal.classList.add("hidden");
+  }
+  els.pauseBtn.addEventListener("click", openPauseModal);
+  els.pauseResumeBtn.addEventListener("click", closePauseModal);
+  els.pauseExitBtn.addEventListener("click", function(){
+    closePauseModal();
+    clearTimers();
+    saveSession();
+    els.startScreen.classList.remove("hidden");
+    refreshStartScreen();
+  });
   els.nextBtn.addEventListener("click", goNextLine);
   els.restartBtn.addEventListener("click", restartGame);
   els.shareBtn.addEventListener("click", generateShareCard);
